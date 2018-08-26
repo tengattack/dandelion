@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"../../client"
-	"../../log"
-	"../../mq"
-	"./config"
+	"github.com/tengattack/dandelion/client"
+	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"
+	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/dandelion/mq"
 )
 
 var (
@@ -31,7 +31,7 @@ func main() {
 		return
 	}
 	if *configPath == "" {
-		fmt.Fprint(os.Stderr, "Please specify a config file\n\n")
+		fmt.Fprintln(os.Stderr, "Please specify a config file")
 		flag.Usage()
 		os.Exit(1)
 	}

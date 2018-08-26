@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
-	"../../app"
-	"../../log"
-	"./config"
+	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"
+	"github.com/tengattack/dandelion/log"
 )
 
 // errors

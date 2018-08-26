@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"../log"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/tengattack/dandelion/log"
 )
 
 // MessageQueue is the message queue sturcture

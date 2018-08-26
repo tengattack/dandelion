@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"../../app"
+	"github.com/tengattack/dandelion/app"
 )
 
 // HandleMessage handle dandelion messages

@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"../log"
+	"github.com/tengattack/dandelion/log"
 )
 
 const (

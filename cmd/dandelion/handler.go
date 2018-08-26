@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"../../app"
-	"../../log"
+	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/glob"

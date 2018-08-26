@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"runtime"
 
-	"../../../log"
+	"github.com/tengattack/dandelion/log"
 
 	"gopkg.in/yaml.v2"
 )

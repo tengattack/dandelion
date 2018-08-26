@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"../log"
+	"github.com/tengattack/dandelion/log"
 
 	"golang.org/x/crypto/ssh"
 	git "gopkg.in/src-d/go-git.v4"

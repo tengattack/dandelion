@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"../log"
+	"github.com/tengattack/dandelion/log"
 
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"

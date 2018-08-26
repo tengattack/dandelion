@@ -10,8 +10,8 @@ import (
 	"os"
 	"path"
 
-	"../app"
-	"../log"
+	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/log"
 )
 
 // DandelionClient client interfaces

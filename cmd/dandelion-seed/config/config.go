@@ -3,7 +3,7 @@ package config
 import (
 	"io/ioutil"
 
-	"../../../log"
+	"github.com/tengattack/dandelion/log"
 
 	"gopkg.in/yaml.v2"
 )

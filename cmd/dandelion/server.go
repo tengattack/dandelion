@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"../../log"
+	"github.com/tengattack/dandelion/log"
 
 	"github.com/gin-gonic/gin"
 )
