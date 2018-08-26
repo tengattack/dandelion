@@ -1,0 +1,31 @@
+
+log:
+  format: "string" # string or json
+  access_log: "stdout" # stdout: output to console, or define log path like "log/access_log"
+  access_level: "info"
+  error_log: "stderr" # stderr: output to console, or define log path like "log/error_log"
+  error_level: "error"
+  agent:
+    enabled: false
+    dsn: 'udp://logstash.example.com:8911'
+    app_id: dandelion-seed
+    #host: '' # log host, defaults to os.Getenv("HOST") or os.Hostname()
+    #instance_id: '' # log instance_id, defaults to os.Getenv("INSTANCE_ID") or os.Hostname()
+
+dandelion:
+  url: 'http://127.0.0.1:9012'
+
+kafka:
+  topic: test
+  group_id: test1
+  servers:
+    - 127.0.0.1:9092
+
+# multiple configs for different apps
+configs:
+  - app_id: test
+    path: /tmp/test
+    #chown: 'www' # does not work for windows
+    meta_files:
+      - "package.json"
+    exec_reload: 'echo 1'

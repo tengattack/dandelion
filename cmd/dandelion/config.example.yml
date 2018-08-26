@@ -1,0 +1,33 @@
+core:
+  enabled: true
+  address: '' # ip address to bind (default: any)
+  port: 9012
+  mode: 'release'
+  repository_path: /tmp/gittest
+  remote_url: git@github.com:tengattack/gittest.git
+
+log:
+  format: "string" # string or json
+  access_log: "stdout" # stdout: output to console, or define log path like "log/access_log"
+  access_level: "info"
+  error_log: "stderr" # stderr: output to console, or define log path like "log/error_log"
+  error_level: "error"
+  agent:
+    enabled: false
+    dsn: 'udp://logstash.example.com:8911'
+    app_id: dandelion
+    #host: '' # log host, defaults to os.Getenv("HOST") or os.Hostname()
+    #instance_id: '' # log instance_id, defaults to os.Getenv("INSTANCE_ID") or os.Hostname()
+
+database:
+  host: '127.0.0.1'
+  port: 3306
+  name: 'app_missevan'
+  user: 'root'
+  pass: 'password'
+  max_idle_conns: 0 # default max idle conns is runtime.NumCPU()
+
+kafka:
+  topic: test
+  servers:
+    - 127.0.0.1:9092
