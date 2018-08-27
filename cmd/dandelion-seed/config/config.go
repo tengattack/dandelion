@@ -2,6 +2,7 @@ package config
 
 import (
 	"io/ioutil"
+	"os"
 
 	"github.com/tengattack/dandelion/log"
 
@@ -92,6 +93,14 @@ func LoadConfig(confPath string) (Config, error) {
 
 	if err != nil {
 		return conf, err
+	}
+
+	if conf.Kafka.GroupID == "" {
+		hostname := os.Getenv("HOST")
+		if hostname == "" {
+			hostname, _ = os.Hostname()
+		}
+		conf.Kafka.GroupID = hostname
 	}
 
 	return conf, nil
