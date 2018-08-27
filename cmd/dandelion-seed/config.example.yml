@@ -26,6 +26,7 @@ configs:
   - app_id: test
     path: /tmp/test
     #chown: 'www' # does not work for windows
+    #chmod: '664' # does not work for windows
     meta_files:
       - "package.json"
     exec_reload: 'echo 1'

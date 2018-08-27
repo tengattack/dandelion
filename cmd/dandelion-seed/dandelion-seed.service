@@ -1,0 +1,13 @@
+[Unit]
+Description=dandelion-seed
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/dandelion-seed -config /etc/dandelion-seed/config.yml
+Type=simple
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

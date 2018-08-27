@@ -72,6 +72,7 @@ func ReadMetadataFromFile(appID, appPath string, metaFiles []string) (*app.Clien
 func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files []string) error {
 	log.LogAccess.Infof("[%s] resyncing config files", c.AppID)
 	var uid, gid int
+	var mode os.FileMode
 	if appConfig.Chown != "" {
 		parts := strings.Split(appConfig.Chown, ":")
 		u, err := user.Lookup(parts[0])
@@ -92,6 +93,10 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 			gid, _ = strconv.Atoi(u.Gid)
 		}
 	}
+	if appConfig.Chmod != "" {
+		modeVal, _ := strconv.Atoi(appConfig.Chmod)
+		mode = os.FileMode(modeVal)
+	}
 	for _, file := range files {
 		filePath := path.Join(appConfig.Path, file)
 		err := Client.Download(c.AppID, c.CommitID, file, filePath)
@@ -102,6 +107,13 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 			err := os.Chown(filePath, uid, gid)
 			if err != nil {
 				log.LogError.Errorf("[%s] failed to change ownership for file '%s': %v", c.AppID, filePath, err)
+				return err
+			}
+		}
+		if mode != 0 {
+			err := os.Chmod(filePath, mode)
+			if err != nil {
+				log.LogError.Errorf("[%s] failed to change permission for file '%s': %v", c.AppID, filePath, err)
 				return err
 			}
 		}

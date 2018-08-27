@@ -2,3 +2,4 @@
 *.go text eol=lf
 *.yml text eol=lf
 *.sql text eol=lf
+*.service text eol=lf

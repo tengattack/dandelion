@@ -53,6 +53,7 @@ type SectionConfig struct {
 	AppID      string   `yaml:"app_id"`
 	Path       string   `yaml:"path"`
 	Chown      string   `yaml:"chown"`
+	Chmod      string   `yaml:"chmod"`
 	MetaFiles  []string `yaml:"meta_files"`
 	ExecReload string   `yaml:"exec_reload"`
 }

@@ -1,0 +1,13 @@
+[Unit]
+Description=dandelion
+After=network.target
+
+[Service]
+User=www
+ExecStart=/usr/local/bin/dandelion -config /etc/dandelion/config.yml
+Type=simple
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
