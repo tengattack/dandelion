@@ -39,6 +39,7 @@ func ReadMetadataFromFile(appID, appPath string, metaFiles []string) (*app.Clien
 		AppID:      appID,
 		Host:       hostname,
 		InstanceID: hostname,
+		Version:    "0",
 	}
 	for _, metaFile := range metaFiles {
 		filePath := path.Join(appPath, metaFile)
