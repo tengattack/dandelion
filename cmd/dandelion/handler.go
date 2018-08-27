@@ -8,7 +8,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -176,6 +178,10 @@ func appPublishConfigHandler(c *gin.Context) {
 	h := md5.New()
 	// ... get the files iterator and md5 sum the file
 	err = tree.Files().ForEach(func(f *object.File) error {
+		if strings.HasPrefix(path.Base(f.Name), ".") {
+			// ignore dot files
+			return nil
+		}
 		fr, err := f.Reader()
 		if err != nil {
 			return err
@@ -463,6 +469,10 @@ func appListFilesHandler(c *gin.Context) {
 
 	// ... get the files iterator and print the file
 	tree.Files().ForEach(func(f *object.File) error {
+		if strings.HasPrefix(path.Base(f.Name), ".") {
+			// ignore dot files
+			return nil
+		}
 		files = append(files, f.Name)
 		return nil
 	})
