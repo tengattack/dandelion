@@ -9,14 +9,20 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"sync"
+	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/log"
 )
 
 // DandelionClient client interfaces
 type DandelionClient struct {
-	URL string
+	URL          string
+	c            *websocket.Conn
+	wsLock       *sync.Mutex
+	lastStatuses map[string]map[string]interface{}
 }
 
 // DandelionResponse is the default dandelion restful API response structure
@@ -25,9 +31,84 @@ type DandelionResponse struct {
 	Info json.RawMessage `json:"info"`
 }
 
+// InstanceStatus is current instance status
+type InstanceStatus int
+
+// status
+const (
+	StatusChecking InstanceStatus = iota
+	StatusSyncing
+	StatusSuccess
+	StatusError
+)
+
 // NewDandelionClient create new dandelion client instance
-func NewDandelionClient(url string) (*DandelionClient, error) {
-	return &DandelionClient{URL: url}, nil
+func NewDandelionClient(serverURL string) (*DandelionClient, error) {
+	_, err := url.Parse(serverURL)
+	if err != nil {
+		return nil, err
+	}
+	c := &DandelionClient{
+		URL:          serverURL,
+		lastStatuses: make(map[string]map[string]interface{}),
+	}
+	err = c.initWebSocket()
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (c *DandelionClient) initWebSocket() error {
+	u, _ := url.Parse(c.URL)
+
+	// websocket connect
+	u.Scheme = "ws"
+	u.Path = "/connect/push"
+
+	headers := http.Header{}
+	headers.Add("User-Agent", UserAgent)
+
+	client, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
+	if err != nil {
+		return err
+	}
+	c.wsLock = new(sync.Mutex)
+	go func() {
+		// TODO: add context
+		for {
+			time.Sleep(time.Second * 10)
+
+			var statuses []map[string]interface{}
+			for _, v := range c.lastStatuses {
+				statuses = append(statuses, v)
+			}
+			message := app.WSMessage{
+				Action:  "ping",
+				Payload: statuses,
+			}
+
+			c.wsLock.Lock()
+			err := client.WriteJSON(message)
+			c.wsLock.Unlock()
+			if err != nil {
+				log.LogError.Errorf("websocket ping failed: %v", err)
+				client2, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
+				if err == nil {
+					// reconnected
+					log.LogAccess.Debug("websocket reconnected")
+					client = client2
+					c.wsLock.Lock()
+					c.c = client2
+					c.wsLock.Unlock()
+				}
+			}
+		}
+	}()
+
+	c.c = client
+
+	return nil
 }
 
 // Match found best match config from dandelion server
@@ -159,4 +240,39 @@ func (c *DandelionClient) Download(appID, commitID, remotePath, filePath string)
 
 	_, err = f.Write(body)
 	return err
+}
+
+// SetStatus set instance status
+func (c *DandelionClient) SetStatus(cfg *app.ClientConfig, status InstanceStatus, v ...interface{}) error {
+	payload := map[string]interface{}{
+		"app_id":      cfg.AppID,
+		"host":        cfg.Host,
+		"instance_id": cfg.InstanceID,
+		"status":      status,
+	}
+	for _, arg := range v {
+		switch e := arg.(type) {
+		case map[string]interface{}:
+			for k, val := range e {
+				payload[k] = val
+			}
+		}
+	}
+	message := app.WSMessage{
+		Action:  "status",
+		Payload: payload,
+	}
+	// use app_id as key, save last status
+	c.lastStatuses[cfg.AppID] = payload
+	log.LogAccess.Debugf("set status: %v", message)
+
+	c.wsLock.Lock()
+	defer c.wsLock.Unlock()
+
+	return c.c.WriteJSON(message)
+}
+
+// Close connection to dandelion server
+func (c *DandelionClient) Close() error {
+	return c.c.Close()
 }

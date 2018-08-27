@@ -25,8 +25,10 @@ import (
 )
 
 const (
-	// TableName the app configs table
-	TableName = "dandelion_app_configs"
+	// TableNameConfigs the app configs table
+	TableNameConfigs = "dandelion_app_configs"
+	// TableNameInstances the app instances table
+	TableNameInstances = "dandelion_app_instances"
 	// ParamsError the http bad request for error params
 	ParamsError = "Params error"
 )
@@ -210,7 +212,7 @@ func appPublishConfigHandler(c *gin.Context) {
 		UpdatedTime: t,
 	}
 
-	r, err := DB.NamedExec("INSERT INTO "+TableName+
+	r, err := DB.NamedExec("INSERT INTO "+TableNameConfigs+
 		" (app_id, status, version, host, instance_id, commit_id, md5sum, author, created_time, updated_time)"+
 		" VALUES (:app_id, :status, :version, :host, :instance_id, :commit_id, :md5sum, :author, :created_time, :updated_time)", &config)
 	if err != nil {
@@ -270,7 +272,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 	}
 
 	var config app.AppConfig
-	err := DB.Get(&config, "SELECT * FROM "+TableName+" WHERE id = ? AND status = 1", id)
+	err := DB.Get(&config, "SELECT * FROM "+TableNameConfigs+" WHERE id = ? AND status = 1", id)
 	if err == sql.ErrNoRows {
 		abortWithError(c, http.StatusNotFound, err.Error())
 		return
@@ -286,7 +288,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 	}
 
 	t := time.Now().Unix()
-	_, err = DB.Exec("UPDATE "+TableName+" SET status = 0, updated_time = ? WHERE id = ?", t, id)
+	_, err = DB.Exec("UPDATE "+TableNameConfigs+" SET status = 0, updated_time = ? WHERE id = ?", t, id)
 	if err != nil {
 		log.LogError.Errorf("db update error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -327,7 +329,7 @@ func appMatchConfigHandler(c *gin.Context) {
 
 	var configs []app.AppConfig
 	// TODO: apply limit & offset
-	err := DB.Select(&configs, "SELECT * FROM "+TableName+" WHERE app_id = ? AND status = 1 AND version <= ? ORDER BY created_time DESC",
+	err := DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 AND version <= ? ORDER BY created_time DESC",
 		appID, version)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)
@@ -358,7 +360,7 @@ func appListConfigsHandler(c *gin.Context) {
 	appID := c.Param("app_id")
 
 	var configs []app.AppConfig
-	err := DB.Select(&configs, "SELECT * FROM "+TableName+" WHERE app_id = ? AND status = 1 ORDER BY created_time DESC",
+	err := DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 ORDER BY created_time DESC",
 		appID)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)

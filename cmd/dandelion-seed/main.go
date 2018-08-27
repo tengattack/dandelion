@@ -56,6 +56,7 @@ func main() {
 		log.LogError.Errorf("dandelion init error: %v", err)
 		panic(err)
 	}
+	defer Client.Close()
 
 	err = CheckCurrentConfigs()
 	if err != nil {

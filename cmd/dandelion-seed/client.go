@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"
 	"github.com/tengattack/dandelion/log"
 )
@@ -134,23 +135,17 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 	return nil
 }
 
-// CheckAppConfig check single app's config
-func CheckAppConfig(appConfig *config.SectionConfig) error {
-	log.LogAccess.Debugf("[%s] checking", appConfig.AppID)
-	clientConfig, err := ReadMetadataFromFile(appConfig.AppID, appConfig.Path, appConfig.MetaFiles)
-	if err != nil {
-		log.LogError.Errorf("[%s] read metadata error: %v", appConfig.AppID, err)
-		return err
-	}
+func checkConfig(appConfig *config.SectionConfig, clientConfig *app.ClientConfig) (*app.AppConfig, error) {
+	Client.SetStatus(clientConfig, client.StatusChecking)
 	c, err := Client.Match(clientConfig)
 	if err != nil {
 		log.LogError.Errorf("[%s] match error: %v", appConfig.AppID, err)
-		return err
+		return nil, err
 	}
 	files, err := Client.ListFiles(c.AppID, c.CommitID)
 	if err != nil {
 		log.LogError.Errorf("[%s] list files error: %v", c.AppID, err)
-		return err
+		return c, err
 	}
 	dirty := false
 	h := md5.New()
@@ -163,14 +158,14 @@ func CheckAppConfig(appConfig *config.SectionConfig) error {
 			break
 		}
 		if err != nil {
-			return err
+			return c, err
 		}
 		if s.IsDir() {
-			return ErrFileIsOccupiedByDir
+			return c, ErrFileIsOccupiedByDir
 		}
 		f, err := os.Open(filePath)
 		if err != nil {
-			return err
+			return c, err
 		}
 		defer f.Close()
 		io.Copy(h, f)
@@ -183,12 +178,41 @@ func CheckAppConfig(appConfig *config.SectionConfig) error {
 		}
 	}
 	if dirty {
+		Client.SetStatus(clientConfig, client.StatusSyncing, map[string]interface{}{
+			"config_id": c.ID,
+			"commit_id": c.CommitID,
+		})
 		// Sync config
 		err = ResyncConfigFiles(appConfig, c, files)
 		if err != nil {
 			log.LogError.Errorf("[%s] resync config files error: %v", c.AppID, err)
-			return err
+			return c, err
 		}
+	}
+	return c, nil
+}
+
+// CheckAppConfig check single app's config
+func CheckAppConfig(appConfig *config.SectionConfig) error {
+	log.LogAccess.Debugf("[%s] checking", appConfig.AppID)
+	clientConfig, err := ReadMetadataFromFile(appConfig.AppID, appConfig.Path, appConfig.MetaFiles)
+	if err != nil {
+		log.LogError.Errorf("[%s] read metadata error: %v", appConfig.AppID, err)
+		return err
+	}
+
+	var v map[string]interface{}
+	c, err := checkConfig(appConfig, clientConfig)
+	if c != nil {
+		v = map[string]interface{}{
+			"config_id": c.ID,
+			"commit_id": c.CommitID,
+		}
+	}
+	if err != nil {
+		Client.SetStatus(clientConfig, client.StatusError, v)
+	} else {
+		Client.SetStatus(clientConfig, client.StatusSuccess, v)
 	}
 	return nil
 }
