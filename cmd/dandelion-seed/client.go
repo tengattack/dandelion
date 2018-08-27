@@ -94,7 +94,7 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 		}
 	}
 	if appConfig.Chmod != "" {
-		modeVal, _ := strconv.Atoi(appConfig.Chmod)
+		modeVal, _ := strconv.ParseInt(appConfig.Chmod, 8, 32)
 		mode = os.FileMode(modeVal)
 	}
 	for _, file := range files {
