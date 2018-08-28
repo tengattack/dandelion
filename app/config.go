@@ -17,6 +17,7 @@ type AppConfig struct {
 
 // ClientConfig is client app config
 type ClientConfig struct {
+	ID         int
 	AppID      string
 	Host       string
 	InstanceID string

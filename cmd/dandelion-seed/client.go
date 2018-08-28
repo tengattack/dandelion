@@ -34,16 +34,17 @@ func init() {
 }
 
 // ReadMetadataFromFile read metadata to client config from file
-func ReadMetadataFromFile(appID, appPath string, metaFiles []string) (*app.ClientConfig, error) {
+func ReadMetadataFromFile(appConfig *config.SectionConfig) (*app.ClientConfig, error) {
 	hostname, _ := os.Hostname()
 	cfg := app.ClientConfig{
-		AppID:      appID,
+		ID:         appConfig.ID,
+		AppID:      appConfig.AppID,
 		Host:       hostname,
 		InstanceID: hostname,
 		Version:    "0",
 	}
-	for _, metaFile := range metaFiles {
-		filePath := path.Join(appPath, metaFile)
+	for _, metaFile := range appConfig.MetaFiles {
+		filePath := path.Join(appConfig.Path, metaFile)
 		f, err := os.Open(filePath)
 		if err != nil {
 			return nil, err
@@ -65,7 +66,7 @@ func ReadMetadataFromFile(appID, appPath string, metaFiles []string) (*app.Clien
 			}
 		}
 	}
-	log.LogAccess.Debugf("[%s] client config: %v", appID, cfg)
+	log.LogAccess.Debugf("[%s] client config: %v", appConfig.AppID, cfg)
 	return &cfg, nil
 }
 
@@ -195,7 +196,7 @@ func checkConfig(appConfig *config.SectionConfig, clientConfig *app.ClientConfig
 // CheckAppConfig check single app's config
 func CheckAppConfig(appConfig *config.SectionConfig) error {
 	log.LogAccess.Debugf("[%s] checking", appConfig.AppID)
-	clientConfig, err := ReadMetadataFromFile(appConfig.AppID, appConfig.Path, appConfig.MetaFiles)
+	clientConfig, err := ReadMetadataFromFile(appConfig)
 	if err != nil {
 		log.LogError.Errorf("[%s] read metadata error: %v", appConfig.AppID, err)
 		return err

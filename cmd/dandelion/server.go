@@ -40,6 +40,7 @@ func routerEngine() *gin.Engine {
 	r.POST("/publish/:app_id", appPublishConfigHandler)
 	r.POST("/rollback/:app_id", appRollbackConfigHandler)
 	r.GET("/match/:app_id", appMatchConfigHandler)
+	r.POST("/check/:app_id", appCheckHandler)
 	r.GET("/connect/push", wsPushHandler)
 	r.GET("/", rootHandler)
 

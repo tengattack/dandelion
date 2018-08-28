@@ -22,7 +22,7 @@ type DandelionClient struct {
 	URL          string
 	c            *websocket.Conn
 	wsLock       *sync.Mutex
-	lastStatuses map[string]map[string]interface{}
+	lastStatuses map[int]map[string]interface{}
 }
 
 // DandelionResponse is the default dandelion restful API response structure
@@ -50,7 +50,7 @@ func NewDandelionClient(serverURL string) (*DandelionClient, error) {
 	}
 	c := &DandelionClient{
 		URL:          serverURL,
-		lastStatuses: make(map[string]map[string]interface{}),
+		lastStatuses: make(map[int]map[string]interface{}),
 	}
 	err = c.initWebSocket()
 	if err != nil {
@@ -263,7 +263,7 @@ func (c *DandelionClient) SetStatus(cfg *app.ClientConfig, status InstanceStatus
 		Payload: payload,
 	}
 	// use app_id as key, save last status
-	c.lastStatuses[cfg.AppID] = payload
+	c.lastStatuses[cfg.ID] = payload
 	log.LogAccess.Debugf("set status: %v", message)
 
 	c.wsLock.Lock()

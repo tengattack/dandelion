@@ -6,7 +6,7 @@ import "encoding/json"
 type NotifyMessage struct {
 	Event  string    `json:"event"`
 	AppID  string    `json:"app_id"`
-	Config AppConfig `json:"config"`
+	Config AppConfig `json:"config,omitempty"`
 }
 
 // WSMessage is websocket message structure

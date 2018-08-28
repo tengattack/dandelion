@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -354,6 +355,29 @@ func appMatchConfigHandler(c *gin.Context) {
 	}
 
 	abortWithError(c, http.StatusNotFound, "not found matched config")
+}
+
+func appCheckHandler(c *gin.Context) {
+	// check, notify all nodes
+	appID := c.Param("app_id")
+
+	if appID == "" {
+		abortWithError(c, http.StatusBadRequest, ParamsError)
+		return
+	}
+
+	// TODO: using json.Marshal
+	message := fmt.Sprintf(`{"app_id":"%s","event":"%s"}`, appID, "check")
+	err := MQ.Publish(message)
+	if err != nil {
+		log.LogError.Errorf("publish message error: %v", err)
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	succeed(c, gin.H{
+		"app_id": appID,
+	})
 }
 
 func appListConfigsHandler(c *gin.Context) {

@@ -11,10 +11,19 @@ import (
 
 // Config is config structure.
 type Config struct {
+	API       SectionAPI       `yaml:"api"`
 	Log       log.Config       `yaml:"log"`
 	Dandelion SectionDandelion `yaml:"dandelion"`
 	Kafka     SectionKafka     `yaml:"kafka"`
 	Configs   []SectionConfig  `yaml:"configs"`
+}
+
+// SectionAPI is sub section of config.
+type SectionAPI struct {
+	Enabled bool   `yaml:"enabled"`
+	Address string `yaml:"address"`
+	Port    int    `yaml:"port"`
+	Mode    string `yaml:"mode"`
 }
 
 // SectionLog is sub section of config.
@@ -50,6 +59,7 @@ type SectionKafka struct {
 
 // SectionConfig is sub section of config.
 type SectionConfig struct {
+	ID         int
 	AppID      string   `yaml:"app_id"`
 	Path       string   `yaml:"path"`
 	Chown      string   `yaml:"chown"`
@@ -61,6 +71,12 @@ type SectionConfig struct {
 // BuildDefaultConf is default config setting.
 func BuildDefaultConf() Config {
 	var conf Config
+
+	// API
+	conf.API.Enabled = true
+	conf.API.Address = ""
+	conf.API.Port = 9013
+	conf.API.Mode = "release"
 
 	// Log
 	conf.Log.Format = "string"
@@ -102,6 +118,11 @@ func LoadConfig(confPath string) (Config, error) {
 			hostname, _ = os.Hostname()
 		}
 		conf.Kafka.GroupID = hostname
+	}
+
+	// mark id
+	for i := range conf.Configs {
+		conf.Configs[i].ID = i
 	}
 
 	return conf, nil

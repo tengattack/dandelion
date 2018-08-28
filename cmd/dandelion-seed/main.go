@@ -73,6 +73,9 @@ func main() {
 		panic(err)
 	}
 	defer m.Close()
+
+	go RunHTTPServer()
+
 	for message := range m.Messages() {
 		log.LogAccess.Infof("received message: %s", message)
 		err = HandleMessage(message)
