@@ -77,7 +77,7 @@ func (c *DandelionClient) initWebSocket() error {
 	go func() {
 		// TODO: add context
 		for {
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Minute * 2)
 
 			var statuses []map[string]interface{}
 			for _, v := range c.lastStatuses {
