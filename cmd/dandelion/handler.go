@@ -609,7 +609,7 @@ func appListInstancesHandler(c *gin.Context) {
 	}
 
 	succeed(c, gin.H{
-		"app_id":   appID,
-		"statuses": statuses,
+		"app_id":    appID,
+		"instances": statuses,
 	})
 }
