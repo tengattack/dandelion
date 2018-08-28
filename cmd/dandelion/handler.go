@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/log"
 
 	"github.com/gin-gonic/gin"
@@ -393,7 +394,7 @@ func appListConfigsHandler(c *gin.Context) {
 	}
 	if configs == nil {
 		// empty array
-		configs = make([]app.AppConfig, 0)
+		configs = []app.AppConfig{}
 	}
 
 	succeed(c, gin.H{
@@ -581,4 +582,34 @@ func appGetFileHandler(c *gin.Context) {
 	}
 
 	c.Data(http.StatusOK, "text/plain", d)
+}
+
+func appListInstancesHandler(c *gin.Context) {
+	appID := c.Param("app_id")
+
+	var statuses []app.Status
+	err := DB.Select(&statuses, "SELECT * FROM "+TableNameInstances+" WHERE app_id = ? ORDER BY updated_time DESC",
+		appID)
+	if err != nil {
+		log.LogError.Errorf("db select error: %v", err)
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if statuses == nil {
+		// ensure empty array
+		statuses = []app.Status{}
+	} else {
+		// mark offline instances
+		t := time.Now().Add(time.Minute * -5).Unix()
+		for i := range statuses {
+			if statuses[i].UpdatedTime < t {
+				statuses[i].Status = int(client.StatusOffline)
+			}
+		}
+	}
+
+	succeed(c, gin.H{
+		"app_id":   appID,
+		"statuses": statuses,
+	})
 }

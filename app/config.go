@@ -15,6 +15,19 @@ type AppConfig struct {
 	UpdatedTime int64  `db:"updated_time" json:"updated_time"`
 }
 
+// Status is a dandelion app instance status structure
+type Status struct {
+	ID          int64  `json:"-" db:"id"`
+	AppID       string `json:"app_id" db:"app_id"`
+	Host        string `json:"host" db:"host"`
+	InstanceID  string `json:"instance_id" db:"instance_id"`
+	ConfigID    int64  `json:"config_id,omitempty" db:"config_id"`
+	CommitID    string `json:"commit_id,omitempty" db:"commit_id"`
+	Status      int    `json:"status" db:"status"`
+	CreatedTime int64  `json:"created_time,omitempty" db:"created_time"`
+	UpdatedTime int64  `json:"updated_time,omitempty" db:"updated_time"`
+}
+
 // ClientConfig is client app config
 type ClientConfig struct {
 	ID         int

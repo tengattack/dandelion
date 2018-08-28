@@ -36,7 +36,8 @@ type InstanceStatus int
 
 // status
 const (
-	StatusChecking InstanceStatus = iota
+	StatusOffline InstanceStatus = iota
+	StatusChecking
 	StatusSyncing
 	StatusSuccess
 	StatusError

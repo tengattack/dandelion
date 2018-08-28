@@ -35,6 +35,7 @@ func routerEngine() *gin.Engine {
 	r.GET("/list", appListHandler)
 	r.GET("/list/:app_id/configs", appListConfigsHandler)
 	r.GET("/list/:app_id/commits", appListCommitsHandler)
+	r.GET("/list/:app_id/instances", appListInstancesHandler)
 	r.GET("/list/:app_id/tree/:commit_id", appListFilesHandler)
 	r.GET("/list/:app_id/tree/:commit_id/*path", appGetFileHandler)
 	r.POST("/publish/:app_id", appPublishConfigHandler)

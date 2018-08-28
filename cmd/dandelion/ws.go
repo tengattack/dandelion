@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/tengattack/dandelion/app"
-	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/log"
 )
 
@@ -28,21 +27,11 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 	if err != nil {
 		return err
 	}
-	type Status struct {
-		ID          int64                 `json:"-" db:"id"`
-		AppID       string                `json:"app_id" db:"app_id"`
-		Host        string                `json:"host" db:"host"`
-		InstanceID  string                `json:"instance_id" db:"instance_id"`
-		ConfigID    int64                 `json:"config_id,omitempty" db:"config_id"`
-		CommitID    string                `json:"commit_id,omitempty" db:"commit_id"`
-		Status      client.InstanceStatus `json:"status" db:"status"`
-		CreatedTime int64                 `json:"-" db:"created_time"`
-		UpdatedTime int64                 `json:"-" db:"updated_time"`
-	}
+
 	switch message.Action {
 	case "ping":
 		if message.Payload != nil {
-			var payload []Status
+			var payload []app.Status
 			err = json.Unmarshal(message.Payload, &payload)
 			if err != nil {
 				return err
@@ -60,12 +49,12 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 		t := time.Now().Add(time.Second * 5)
 		return conn.WriteControl(websocket.PongMessage, nil, t)
 	case "status":
-		var payload Status
+		var payload app.Status
 		err = json.Unmarshal(message.Payload, &payload)
 		if err != nil {
 			return err
 		}
-		var row Status
+		var row app.Status
 		err = DB.Get(&row, "SELECT id, config_id, commit_id, status FROM "+TableNameInstances+
 			" WHERE app_id = ? AND host = ? AND instance_id = ? LIMIT 1",
 			payload.AppID, payload.Host, payload.InstanceID)
