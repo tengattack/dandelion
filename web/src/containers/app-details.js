@@ -40,6 +40,7 @@ export class AppDetails extends Component {
     const { extendCommitId } = this.state
     return (
       <div id="AppDetails">
+        <div className="app-title">{ appId }</div>
         <AppActions appId={appId} />
       {
         commits && configs ? (

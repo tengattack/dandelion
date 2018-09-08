@@ -1,5 +1,14 @@
 #AppDetails {
   margin: 20px 0;
+  .app-title {
+    width: 360px;
+    height: 60px;
+    margin: 0 auto 20px;
+    padding: 10px;
+    line-height: 40px;
+    font-size: 1.2em;
+    border: 1px solid $border-color;
+  }
   .commits {
     width: 500px;
     margin: 0 auto;

@@ -30,7 +30,7 @@ If you need to modify web ui, as following steps:
 ```sh
 cd web
 npm i
-rm -rf public/assets public/index.html
+npm run clean
 npm run build
 # return to repository root path
 cd ..

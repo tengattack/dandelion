@@ -1,5 +1,4 @@
 import { ApiError as ApiErrorA } from 'redux-api-middleware'
-import md5 from 'md5'
 
 export const PUBLIC_URL = process.env.PUBLIC_URL
 // PUBLIC_URL has last slash
@@ -22,9 +21,4 @@ export function apiPayload(action, state, res) {
       return json.info
     }
   })
-}
-
-export function getGravatarUrl(email, s = 40) {
-  const hash = md5(email.toLowerCase())
-  return `https://www.gravatar.com/avatar/${email}?s=${s}`
 }
