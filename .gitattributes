@@ -1,5 +1,12 @@
 .git* text eol=lf
+.*rc text eol=lf
 *.go text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.svg text eol=lf
+*.html text eol=lf
 *.yml text eol=lf
 *.sql text eol=lf
 *.service text eol=lf

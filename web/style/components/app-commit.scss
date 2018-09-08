@@ -1,0 +1,124 @@
+.commit {
+  display: block;
+  border-bottom: 1px solid $border-color;
+  &:last-child {
+    border-bottom: none;
+  }
+}
+.commit-wrap {
+  position: relative;
+  max-height: 92px;
+  padding: 30px 10px 10px;
+  line-height: 40px;
+  font-size: 0.9em;
+  text-align: left;
+  transition: max-height $show-trans;
+  overflow: hidden;
+  &.extend {
+    max-height: 200px;
+  }
+  .commit-id {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    line-height: 20px;
+    color: $grey-dark;
+  }
+  .message {
+    width: 100%;
+    height: 30px;
+    line-height: 30px;
+    margin-bottom: 40px;
+    font-size: 1.2em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .author {
+    position: absolute;
+    top: 62px;
+    left: 10px;
+    line-height: 20px;
+    .gravatar-img {
+      margin-right: 3px;
+    }
+    .time {
+      margin-left: 3px;
+    }
+  }
+  .actions {
+    position: absolute;
+    top: 62px;
+    right: 10px;
+    height: 20px;
+    .btn {
+      float: right;
+      width: 20px;
+      margin-left: 3px;
+    }
+  }
+  .panel-publish {
+    position: relative;
+    .btn-red {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+    }
+  }
+}
+.configs, .instances {
+  padding-right: 10px;
+  .config, .instance {
+    float: left;
+    height: 20px;
+    line-height: 18px;
+    margin: 0 0 10px 10px;
+    font-size: 0.8em;
+    font-family: 'Courier New', Courier, monospace;
+    border: 1px solid $grey-dark;
+    border-radius: 10px;
+    transition: background-color $hover-trans;
+    cursor: pointer;
+    overflow: hidden;
+    &:hover {
+      background-color: $grey-dark;
+    }
+    span {
+      margin-left: 6px;
+    }
+    .btn {
+      float: right;
+      width: 18px;
+      height: 18px;
+      line-height: 16px;
+    }
+  }
+  .instance {
+    .status {
+      float: left;
+      width: 18px;
+      height: 18px;
+      $statuses:
+        offline #585872,
+        checking #ffb6bb,
+        syncing #ffe691,
+        online #a0de59,
+        error #9e4446;
+      @each $status in $statuses {
+        $key: nth($status, 1);
+        $value: nth($status, 2);
+        &.#{$key} {
+          background-color: $value;
+        }
+      }
+    }
+    span {
+      margin: 0 6px 0 0;
+    }
+  }
+  &::after {
+    display: table;
+    content: '';
+    clear: both;
+  }
+}

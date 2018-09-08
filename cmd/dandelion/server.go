@@ -3,17 +3,42 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/tengattack/dandelion/log"
 
 	"github.com/gin-gonic/gin"
 )
 
+var (
+	baseURLRegexp *regexp.Regexp
+)
+
+func init() {
+	baseURLRegexp = regexp.MustCompile(`(<base href)=".*"`)
+}
+
 func rootHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code": 0,
 		"info": "Welcome to dandelion.",
 	})
+}
+
+func indexHandler(c *gin.Context) {
+	path := "index.html"
+	res, err := Asset(path)
+	if err != nil {
+		c.Next()
+		return
+	}
+	contentType := "text/html"
+	if n := strings.Count(c.Request.URL.Path, "/"); n > 1 {
+		// runtime update base path
+		res = baseURLRegexp.ReplaceAll(res, []byte(`$1="`+strings.Repeat("../", n-1)+`"`))
+	}
+	c.Data(http.StatusOK, contentType, res)
 }
 
 func routerEngine() *gin.Engine {
@@ -26,6 +51,14 @@ func routerEngine() *gin.Engine {
 	//r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 	r.Use(log.LogMiddleware())
+
+	// web public
+	r.GET("/assets/*asset", servePublic)
+	r.GET("/favicon.ico", servePublic)
+	r.GET("/manifest.json", servePublic)
+	r.GET("/index.html", servePublic)
+	r.GET("/a/*app_id", indexHandler)
+	r.GET("/", indexHandler)
 
 	// expvar
 	//r.GET("/debug/vars", expvar.Handler())
@@ -46,9 +79,53 @@ func routerEngine() *gin.Engine {
 	g.POST("/rollback/:app_id", appRollbackConfigHandler)
 	g.GET("/match/:app_id", appMatchConfigHandler)
 	g.POST("/check/:app_id", appCheckHandler)
-	g.GET("/", rootHandler)
 
 	return r
+}
+
+//go:generate go-bindata -prefix "../../web/public" -pkg main -o bindata.go ../../web/public/...
+func servePublic(c *gin.Context) {
+	path := c.Request.URL.Path
+
+	path = strings.Replace(path, "/", "", 1)
+	split := strings.Split(path, ".")
+	suffix := split[len(split)-1]
+
+	res, err := Asset(path)
+	if err != nil {
+		c.Next()
+		return
+	}
+
+	contentType := "text/plain"
+	switch suffix {
+	case "png":
+		contentType = "image/png"
+	case "jpg", "jpeg":
+		contentType = "image/jpeg"
+	case "gif":
+		contentType = "image/gif"
+	case "svg":
+		contentType = "image/svg+xml"
+	case "ico":
+		contentType = "image/x-icon"
+	case "js":
+		contentType = "application/javascript"
+	case "json":
+		contentType = "application/json"
+	case "css":
+		contentType = "text/css"
+	case "woff":
+		contentType = "application/x-font-woff"
+	case "ttf":
+		contentType = "application/x-font-ttf"
+	case "otf":
+		contentType = "application/x-font-otf"
+	case "html":
+		contentType = "text/html"
+	}
+
+	c.Data(http.StatusOK, contentType, res)
 }
 
 // RunHTTPServer provide run http or https protocol.

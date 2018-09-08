@@ -1,0 +1,22 @@
+.form {
+  .row {
+    position: relative;
+    height: 30px;
+    padding-left: 80px;
+    line-height: 30px;
+    label {
+      position: absolute;
+      left: 0;
+    }
+    input {
+      height: 26px;
+      padding: 0 3px;
+      border: 1px solid $grey-dark;
+      border-radius: 2px;
+      transition: border-color $hover-trans;
+      &:hover, &:focus {
+        border-color: $grey-darker;
+      }
+    }
+  }
+}

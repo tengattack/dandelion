@@ -1,0 +1,47 @@
+.btn {
+  display: inline-block;
+  height: 20px;
+  line-height: 18px;
+  padding: 0;
+  text-align: center;
+  color: $black;
+  font-size: 0.8em;
+  transition: background-color $hover-trans;
+  border: 1px solid $grey-dark;
+  border-radius: 2px;
+  cursor: pointer;
+  user-select: none;
+  &:hover {
+    background-color: $grey-dark;
+  }
+  &.loading {
+    pointer-events: none;
+    &::before {
+      content: '';
+      display: block;
+      float: left;
+      width: 18px;
+      height: 18px;
+      background: url('./../images/loading.svg');
+    }
+  }
+  &.btn-red {
+    color: $white;
+    background: $red;
+    border-color: $red-dark;
+    &:hover {
+      background-color: $red-light;
+    }
+  }
+  &.btn-large {
+    height: 36px;
+    line-height: 24px;
+    padding: 5px 12px;
+    font-size: 1.2em;
+    &.loading {
+      &::before {
+        margin: 3px;
+      }
+    }
+  }
+}

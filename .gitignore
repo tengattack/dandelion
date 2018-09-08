@@ -1,8 +1,23 @@
 .DS_Store
 
+node_modules
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# testing
+coverage
+
+# config
 config.yml
 
-cmd/dandelion/dandelion
-cmd/dandelion/dandelion.exe
-cmd/dandelion-seed/dandelion-seed
-cmd/dandelion-seed/dandelion-seed.exe
+# executable
+/cmd/dandelion/dandelion
+/cmd/dandelion/dandelion.exe
+/cmd/dandelion-seed/dandelion-seed
+/cmd/dandelion-seed/dandelion-seed.exe
+
+# web public
+/web/public/assets
+/web/public/index.html
