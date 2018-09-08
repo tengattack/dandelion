@@ -28,6 +28,7 @@ database:
   max_idle_conns: 0 # default max idle conns is runtime.NumCPU()
 
 kafka:
+  enabled: true # default: true
   topic: test
   servers:
     - 127.0.0.1:9092

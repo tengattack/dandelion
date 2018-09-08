@@ -39,6 +39,7 @@ type SectionDatabase struct {
 
 // SectionKafka is sub section of config.
 type SectionKafka struct {
+	Enabled bool     `yaml:"enabled"`
 	Topic   string   `yaml:"topic"`
 	Servers []string `yaml:"servers"`
 }
@@ -72,6 +73,7 @@ func BuildDefaultConf() Config {
 	conf.Database.MaxIdleConns = runtime.NumCPU()
 
 	// Kafka
+	conf.Kafka.Enabled = true
 	conf.Kafka.Topic = ""
 
 	return conf
@@ -79,7 +81,7 @@ func BuildDefaultConf() Config {
 
 // LoadConfig load config from file
 func LoadConfig(confPath string) (Config, error) {
-	var conf Config
+	conf := BuildDefaultConf()
 
 	configFile, err := ioutil.ReadFile(confPath)
 

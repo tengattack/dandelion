@@ -68,13 +68,15 @@ func main() {
 	defer db.Close()
 	DB = db
 
-	m, err := mq.NewProducer(Conf.Kafka.Servers, Conf.Kafka.Topic)
-	if err != nil {
-		log.LogError.Errorf("database error: %v", err)
-		panic(err)
+	if Conf.Kafka.Enabled {
+		m, err := mq.NewProducer(Conf.Kafka.Servers, Conf.Kafka.Topic)
+		if err != nil {
+			log.LogError.Errorf("database error: %v", err)
+			panic(err)
+		}
+		defer m.Close()
+		MQ = m
 	}
-	defer m.Close()
-	MQ = m
 
 	err = RunHTTPServer()
 	if err != nil {

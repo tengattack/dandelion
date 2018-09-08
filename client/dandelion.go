@@ -34,6 +34,11 @@ type DandelionResponse struct {
 // InstanceStatus is current instance status
 type InstanceStatus int
 
+const (
+	// APIPrefix is the prefix for the API URL
+	APIPrefix = "/api/v1"
+)
+
 // status
 const (
 	StatusOffline InstanceStatus = iota
@@ -114,7 +119,7 @@ func (c *DandelionClient) initWebSocket() error {
 
 // Match found best match config from dandelion server
 func (c *DandelionClient) Match(clientConfig *app.ClientConfig) (*app.AppConfig, error) {
-	apiURI := "/match/" + clientConfig.AppID
+	apiURI := APIPrefix + "/match/" + clientConfig.AppID
 
 	u := url.Values{}
 	u.Add("version", clientConfig.Version)
@@ -155,7 +160,7 @@ func (c *DandelionClient) Match(clientConfig *app.ClientConfig) (*app.AppConfig,
 
 // ListFiles list files for specified app id & commit id
 func (c *DandelionClient) ListFiles(appID string, commitID string) ([]string, error) {
-	apiURI := "/list/" + appID + "/tree/" + commitID
+	apiURI := APIPrefix + "/list/" + appID + "/tree/" + commitID
 
 	log.LogAccess.Debugf("GET %s", apiURI)
 
@@ -191,7 +196,7 @@ func (c *DandelionClient) ListFiles(appID string, commitID string) ([]string, er
 
 // Download remote file to local
 func (c *DandelionClient) Download(appID, commitID, remotePath, filePath string) error {
-	apiURI := "/list/" + appID + "/tree/" + commitID + "/" + remotePath
+	apiURI := APIPrefix + "/list/" + appID + "/tree/" + commitID + "/" + remotePath
 
 	log.LogAccess.Debugf("GET %s", apiURI)
 

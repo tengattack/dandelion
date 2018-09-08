@@ -30,20 +30,23 @@ func routerEngine() *gin.Engine {
 	// expvar
 	//r.GET("/debug/vars", expvar.Handler())
 
-	r.POST("/sync", appSyncHandler)
-	r.POST("/sync/:app_id", appSyncHandler)
-	r.GET("/list", appListHandler)
-	r.GET("/list/:app_id/configs", appListConfigsHandler)
-	r.GET("/list/:app_id/commits", appListCommitsHandler)
-	r.GET("/list/:app_id/instances", appListInstancesHandler)
-	r.GET("/list/:app_id/tree/:commit_id", appListFilesHandler)
-	r.GET("/list/:app_id/tree/:commit_id/*path", appGetFileHandler)
-	r.POST("/publish/:app_id", appPublishConfigHandler)
-	r.POST("/rollback/:app_id", appRollbackConfigHandler)
-	r.GET("/match/:app_id", appMatchConfigHandler)
-	r.POST("/check/:app_id", appCheckHandler)
+	// websocket
 	r.GET("/connect/push", wsPushHandler)
-	r.GET("/", rootHandler)
+
+	g := r.Group("/api/v1")
+	g.POST("/sync", appSyncHandler)
+	g.POST("/sync/:app_id", appSyncHandler)
+	g.GET("/list", appListHandler)
+	g.GET("/list/:app_id/configs", appListConfigsHandler)
+	g.GET("/list/:app_id/commits", appListCommitsHandler)
+	g.GET("/list/:app_id/instances", appListInstancesHandler)
+	g.GET("/list/:app_id/tree/:commit_id", appListFilesHandler)
+	g.GET("/list/:app_id/tree/:commit_id/*path", appGetFileHandler)
+	g.POST("/publish/:app_id", appPublishConfigHandler)
+	g.POST("/rollback/:app_id", appRollbackConfigHandler)
+	g.GET("/match/:app_id", appMatchConfigHandler)
+	g.POST("/check/:app_id", appCheckHandler)
+	g.GET("/", rootHandler)
 
 	return r
 }

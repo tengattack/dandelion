@@ -52,6 +52,7 @@ type SectionDandelion struct {
 
 // SectionKafka is sub section of config.
 type SectionKafka struct {
+	Enabled bool     `yaml:"enabled"`
 	Topic   string   `yaml:"topic"`
 	GroupID string   `yaml:"group_id"`
 	Servers []string `yaml:"servers"`
@@ -90,6 +91,7 @@ func BuildDefaultConf() Config {
 	conf.Dandelion.URL = "http://127.0.0.1:9012"
 
 	// Kafka
+	conf.Kafka.Enabled = true
 	conf.Kafka.Topic = ""
 	conf.Kafka.GroupID = ""
 
@@ -98,7 +100,7 @@ func BuildDefaultConf() Config {
 
 // LoadConfig load config from file
 func LoadConfig(confPath string) (Config, error) {
-	var conf Config
+	conf := BuildDefaultConf()
 
 	configFile, err := ioutil.ReadFile(confPath)
 

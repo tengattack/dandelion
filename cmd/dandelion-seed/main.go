@@ -67,20 +67,24 @@ func main() {
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
-	m, err := mq.NewConsumer(Conf.Kafka.Servers, Conf.Kafka.Topic, Conf.Kafka.GroupID, sigchan)
-	if err != nil {
-		log.LogError.Errorf("check current configs error: %v", err)
-		panic(err)
-	}
-	defer m.Close()
-
 	go RunHTTPServer()
 
-	for message := range m.Messages() {
-		log.LogAccess.Infof("received message: %s", message)
-		err = HandleMessage(message)
+	if Conf.Kafka.Enabled {
+		m, err := mq.NewConsumer(Conf.Kafka.Servers, Conf.Kafka.Topic, Conf.Kafka.GroupID, sigchan)
 		if err != nil {
-			log.LogError.Errorf("handle message error: %v", err)
+			log.LogError.Errorf("check current configs error: %v", err)
+			panic(err)
 		}
+		defer m.Close()
+
+		for message := range m.Messages() {
+			log.LogAccess.Infof("received message: %s", message)
+			err = HandleMessage(message)
+			if err != nil {
+				log.LogError.Errorf("handle message error: %v", err)
+			}
+		}
+	} else {
+		<-sigchan
 	}
 }

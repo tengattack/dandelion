@@ -230,22 +230,24 @@ func appPublishConfigHandler(c *gin.Context) {
 		return
 	}
 
-	m := app.NotifyMessage{
-		AppID:  appID,
-		Event:  "publish",
-		Config: config,
-	}
-	message, err := json.Marshal(m)
-	if err != nil {
-		log.LogError.Errorf("encode message error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	err = MQ.Publish(string(message))
-	if err != nil {
-		log.LogError.Errorf("publish message error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
+	if MQ != nil {
+		m := app.NotifyMessage{
+			AppID:  appID,
+			Event:  "publish",
+			Config: config,
+		}
+		message, err := json.Marshal(m)
+		if err != nil {
+			log.LogError.Errorf("encode message error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		err = MQ.Publish(string(message))
+		if err != nil {
+			log.LogError.Errorf("publish message error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	succeed(c, gin.H{
@@ -297,23 +299,25 @@ func appRollbackConfigHandler(c *gin.Context) {
 		return
 	}
 
-	// rollback, notify all nodes
-	m := app.NotifyMessage{
-		AppID:  appID,
-		Event:  "rollback",
-		Config: config,
-	}
-	message, err := json.Marshal(m)
-	if err != nil {
-		log.LogError.Errorf("encode message error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	err = MQ.Publish(string(message))
-	if err != nil {
-		log.LogError.Errorf("publish message error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
+	if MQ != nil {
+		// rollback, notify all nodes
+		m := app.NotifyMessage{
+			AppID:  appID,
+			Event:  "rollback",
+			Config: config,
+		}
+		message, err := json.Marshal(m)
+		if err != nil {
+			log.LogError.Errorf("encode message error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		err = MQ.Publish(string(message))
+		if err != nil {
+			log.LogError.Errorf("publish message error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	succeed(c, gin.H{
@@ -367,13 +371,15 @@ func appCheckHandler(c *gin.Context) {
 		return
 	}
 
-	// TODO: using json.Marshal
-	message := fmt.Sprintf(`{"app_id":"%s","event":"%s"}`, appID, "check")
-	err := MQ.Publish(message)
-	if err != nil {
-		log.LogError.Errorf("publish message error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
+	if MQ != nil {
+		// TODO: using json.Marshal
+		message := fmt.Sprintf(`{"app_id":"%s","event":"%s"}`, appID, "check")
+		err := MQ.Publish(message)
+		if err != nil {
+			log.LogError.Errorf("publish message error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	succeed(c, gin.H{
