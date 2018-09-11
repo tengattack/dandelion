@@ -17,6 +17,17 @@
   &.extend {
     max-height: 200px;
   }
+  .branch {
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 2px 5px;
+    line-height: 16px;
+    color: $white;
+    background: #95d5ee;
+    border-radius: 0 0 0 2px;
+  }
   .commit-id {
     position: absolute;
     top: 10px;

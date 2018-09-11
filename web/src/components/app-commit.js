@@ -65,6 +65,7 @@ export class AppCommit extends Component {
     return (
       <div className="commit">
         <div className={classNames('commit-wrap', { extend })}>
+          <span className="branch">{ commit.branch }</span>
           <span className="commit-id">{ commit.commit_id }</span>
           <div className="message">{ commit.message }</div>
           <span className="author" title={commit.author.email}>
