@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,6 +27,21 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
+// CommitAuthor is app config commit author structure
+type CommitAuthor struct {
+	Name  string    `json:"name"`
+	Email string    `json:"email"`
+	When  time.Time `json:"when"`
+}
+
+// Commit is app config commit structure
+type Commit struct {
+	Branch   string       `json:"branch"`
+	CommitID string       `json:"commit_id"`
+	Message  string       `json:"message"`
+	Author   CommitAuthor `json:"author"`
+}
+
 const (
 	// TableNameConfigs the app configs table
 	TableNameConfigs = "dandelion_app_configs"
@@ -36,7 +52,8 @@ const (
 )
 
 var (
-	l *sync.Mutex
+	l              *sync.Mutex
+	cachedBranches []string
 )
 
 // InitHandlers init http server handlers
@@ -59,23 +76,70 @@ func succeed(c *gin.Context, message interface{}) {
 	})
 }
 
+func getBranches(force bool) ([]string, error) {
+	if force || cachedBranches == nil {
+		rbs, err := Repo.Branches()
+		if err != nil {
+			log.LogError.Errorf("get refs error: %v", err)
+			return nil, err
+		}
+		defer rbs.Close()
+
+		var bs []string
+		var b *plumbing.Reference
+		for b, err = rbs.Next(); err == nil && b != nil; b, err = rbs.Next() {
+			if b.Name().IsBranch() {
+				bs = append(bs, b.Name().Short())
+			}
+		}
+
+		// cached
+		cachedBranches = bs
+	}
+	return cachedBranches, nil
+}
+
+func getAppID(branch string) string {
+	parts := strings.SplitN(branch, "/", 2)
+	return parts[0]
+}
+
 func getAppIDs() ([]string, error) {
 	// list entries
-	branches, err := Repo.Branches()
+	branches, err := getBranches(false)
 	if err != nil {
 		log.LogError.Errorf("get refs error: %v", err)
 		return nil, err
 	}
-	defer branches.Close()
 
 	var appIDs []string
-	var b *plumbing.Reference
-	for b, err = branches.Next(); err == nil && b != nil; b, err = branches.Next() {
-		if b.Name().IsBranch() {
-			appIDs = append(appIDs, b.Name().Short())
+	for _, branch := range branches {
+		appID := getAppID(branch)
+		found := false
+		for _, a := range appIDs {
+			if a == appID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			appIDs = append(appIDs, appID)
 		}
 	}
 	return appIDs, nil
+}
+
+func getAppCommit(branch string, commit *object.Commit) Commit {
+	return Commit{
+		Branch:   branch,
+		CommitID: commit.ID().String(),
+		Message:  commit.Message,
+		Author: CommitAuthor{
+			Name:  commit.Author.Name,
+			Email: commit.Author.Email,
+			When:  commit.Author.When,
+		},
+	}
 }
 
 func appSyncHandler(c *gin.Context) {
@@ -86,16 +150,32 @@ func appSyncHandler(c *gin.Context) {
 
 	var err error
 	if appID != "" {
-		err = Repo.Pull(appID)
-		if err != nil && err != git.NoErrAlreadyUpToDate {
-			log.LogError.Errorf("pull error: %v", err)
+		branches, err := getBranches(false)
+		if err != nil {
+			log.LogError.Errorf("get branches error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
+		}
+		for _, branch := range branches {
+			if appID == getAppID(branch) {
+				err = Repo.Pull(branch)
+				if err != nil && err != git.NoErrAlreadyUpToDate {
+					log.LogError.Errorf("pull error: %v", err)
+					abortWithError(c, http.StatusInternalServerError, err.Error())
+					return
+				}
+			}
 		}
 	} else {
 		err = Repo.SyncBranches()
 		if err != nil {
 			log.LogError.Errorf("sync branches error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		_, err = getBranches(true)
+		if err != nil {
+			log.LogError.Errorf("get branches error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -118,7 +198,7 @@ func appSyncHandler(c *gin.Context) {
 		"app_ids": appIDs,
 		"head": gin.H{
 			"name":      h.Name(),
-			"app_id":    h.Name().Short(),
+			"app_id":    getAppID(h.Name().Short()),
 			"commit_id": h.Hash().String(),
 		},
 	})
@@ -252,15 +332,8 @@ func appPublishConfigHandler(c *gin.Context) {
 
 	succeed(c, gin.H{
 		"app_id": appID,
-		"commit": gin.H{
-			"commit_id": commit.ID().String(),
-			"message":   commit.Message,
-			"author": gin.H{
-				"name":  commit.Author.Name,
-				"email": commit.Author.Email,
-				"when":  commit.Author.When,
-			},
-		},
+		// TODO: use the correct branch name instead of appID
+		"commit": getAppCommit(appID, commit),
 		"config": config,
 	})
 }
@@ -421,33 +494,40 @@ func appListCommitsHandler(c *gin.Context) {
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = wt.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName("refs/heads/" + appID),
-		Force:  true,
-	})
-	if err != nil {
-		log.LogError.Errorf("checkout error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
+
+	var r []Commit
+
+	branchCount := 0
+	branches, err := getBranches(false)
+	for _, branch := range branches {
+		if appID == getAppID(branch) {
+			branchCount++
+			err = wt.Checkout(&git.CheckoutOptions{
+				Branch: plumbing.ReferenceName("refs/heads/" + branch),
+				Force:  true,
+			})
+			if err != nil {
+				log.LogError.Errorf("checkout error: %v", err)
+				abortWithError(c, http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			commits, err := Repo.Log(&git.LogOptions{})
+			if err != nil {
+				log.LogError.Errorf("log error: %v", err)
+				abortWithError(c, http.StatusInternalServerError, err.Error())
+				return
+			}
+			for commit, err := commits.Next(); err == nil && commit != nil; commit, err = commits.Next() {
+				r = append(r, getAppCommit(branch, commit))
+			}
+			commits.Close()
+		}
 	}
 
-	commits, err := Repo.Log(&git.LogOptions{})
-	if err != nil {
-		log.LogError.Errorf("log error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer commits.Close()
-	var r []gin.H
-	for commit, err := commits.Next(); err == nil && commit != nil; commit, err = commits.Next() {
-		r = append(r, gin.H{
-			"commit_id": commit.ID().String(),
-			"message":   commit.Message,
-			"author": gin.H{
-				"name":  commit.Author.Name,
-				"email": commit.Author.Email,
-				"when":  commit.Author.When,
-			},
+	if r != nil && branchCount > 1 {
+		sort.Slice(r, func(i, j int) bool {
+			return r[i].Author.When.After(r[j].Author.When)
 		})
 	}
 
@@ -464,21 +544,24 @@ func appListFilesHandler(c *gin.Context) {
 	l.Lock()
 	defer l.Unlock()
 
-	wt, err := Repo.Worktree()
-	if err != nil {
-		log.LogError.Errorf("worktree error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	err = wt.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName("refs/heads/" + appID),
-		Force:  true,
-	})
-	if err != nil {
-		log.LogError.Errorf("checkout error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
+	/*
+		// No need to checkout here
+		wt, err := Repo.Worktree()
+		if err != nil {
+			log.LogError.Errorf("worktree error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		err = wt.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.ReferenceName("refs/heads/" + appID),
+			Force:  true,
+		})
+		if err != nil {
+			log.LogError.Errorf("checkout error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+	*/
 
 	// TODO: check commit id belongs to this app id
 
@@ -518,7 +601,7 @@ func appListFilesHandler(c *gin.Context) {
 }
 
 func appGetFileHandler(c *gin.Context) {
-	appID := c.Param("app_id")
+	// appID := c.Param("app_id")
 	commitID := c.Param("commit_id")
 	path := c.Param("path")
 
@@ -528,21 +611,24 @@ func appGetFileHandler(c *gin.Context) {
 	l.Lock()
 	defer l.Unlock()
 
-	wt, err := Repo.Worktree()
-	if err != nil {
-		log.LogError.Errorf("worktree error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	err = wt.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName("refs/heads/" + appID),
-		Force:  true,
-	})
-	if err != nil {
-		log.LogError.Errorf("checkout error: %v", err)
-		abortWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
+	/*
+		// No need to checkout here
+		wt, err := Repo.Worktree()
+		if err != nil {
+			log.LogError.Errorf("worktree error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		err = wt.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.ReferenceName("refs/heads/" + appID),
+			Force:  true,
+		})
+		if err != nil {
+			log.LogError.Errorf("checkout error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+	*/
 
 	// TODO: check commit id belongs to this app id
 

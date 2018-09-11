@@ -173,10 +173,10 @@ func (r *Repository) SyncBranches() error {
 	if err == git.NoErrAlreadyUpToDate {
 		// already up to update
 		log.LogAccess.Debugf("sync branches: %v", err)
-		return nil
 	} else if err != nil {
 		return err
 	}
+
 	refs, err := r.Repo.References()
 	if err != nil {
 		log.LogError.Errorf("get remotes error: %v", err)
@@ -187,7 +187,7 @@ func (r *Repository) SyncBranches() error {
 	var ref *plumbing.Reference
 	for ref, err = refs.Next(); err == nil && ref != nil; ref, err = refs.Next() {
 		if ref.Name().IsRemote() {
-			branchName := strings.Split(ref.Name().Short(), "/")[1]
+			branchName := strings.SplitN(ref.Name().Short(), "/", 2)[1]
 
 			log.LogAccess.Debugf("ref: %s -> %s", branchName, ref.Name())
 			branchRef := plumbing.NewHashReference(plumbing.ReferenceName("refs/heads/"+branchName), ref.Hash())
