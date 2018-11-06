@@ -29,6 +29,7 @@ func main() {
 		defaultConfigPath = "/etc/dandelion-seed/config.yml"
 	}
 	configPath := flag.String("config", defaultConfigPath, "config file")
+	syncOnly := flag.Bool("sync-only", false, "sync config only")
 	showVerbose := flag.Bool("verbose", false, "show verbose debug log")
 	showHelp := flag.Bool("help", false, "show help message")
 	flag.Parse()
@@ -69,6 +70,11 @@ func main() {
 	if err != nil {
 		log.LogError.Errorf("check current configs error: %v", err)
 		panic(err)
+	}
+
+	if *syncOnly {
+		// sync config only, exiting now
+		return
 	}
 
 	sigchan := make(chan os.Signal, 1)
