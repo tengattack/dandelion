@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
@@ -24,7 +25,13 @@ var (
 )
 
 func main() {
-	configPath := flag.String("config", "", "config file")
+	var defaultConfigPath string
+	if runtime.GOOS == "windows" {
+		defaultConfigPath = "config.yml"
+	} else {
+		defaultConfigPath = "/etc/dandelion/config.yml"
+	}
+	configPath := flag.String("config", defaultConfigPath, "config file")
 	showVerbose := flag.Bool("verbose", false, "show verbose debug log")
 	showHelp := flag.Bool("help", false, "show help message")
 	flag.Parse()

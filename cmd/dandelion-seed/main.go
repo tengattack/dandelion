@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/tengattack/dandelion/client"
@@ -21,7 +22,13 @@ var (
 )
 
 func main() {
-	configPath := flag.String("config", "", "config file")
+	var defaultConfigPath string
+	if runtime.GOOS == "windows" {
+		defaultConfigPath = "config.yml"
+	} else {
+		defaultConfigPath = "/etc/dandelion-seed/config.yml"
+	}
+	configPath := flag.String("config", defaultConfigPath, "config file")
 	showVerbose := flag.Bool("verbose", false, "show verbose debug log")
 	showHelp := flag.Bool("help", false, "show help message")
 	flag.Parse()
