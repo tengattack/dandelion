@@ -23,6 +23,7 @@ type SectionCore struct {
 	Address        string `yaml:"address"`
 	Port           int    `yaml:"port"`
 	Mode           string `yaml:"mode"`
+	PublicURL      string `yaml:"public_url"`
 	RepositoryPath string `yaml:"repository_path"`
 	RemoteURL      string `yaml:"remote_url"`
 }
@@ -53,6 +54,7 @@ func BuildDefaultConf() Config {
 	conf.Core.Address = ""
 	conf.Core.Port = 9012
 	conf.Core.Mode = "release"
+	conf.Core.PublicURL = ""
 	conf.Core.RepositoryPath = ""
 	conf.Core.RemoteURL = ""
 

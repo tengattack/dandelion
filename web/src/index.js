@@ -6,7 +6,6 @@ import { BrowserRouter } from 'react-router-dom'
 import thunk from 'redux-thunk'
 import { apiMiddleware } from 'redux-api-middleware'
 import rootReducer from './reducers'
-import { PUBLIC_URL } from './api'
 import App from './app'
 
 const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose

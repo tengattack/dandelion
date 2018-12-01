@@ -3,6 +3,7 @@ core:
   address: '' # ip address to bind (default: any)
   port: 9012
   mode: 'release'
+  public_url: '' # public url for web browser request, need last slash
   repository_path: /tmp/gittest
   remote_url: git@github.com:tengattack/gittest.git
 

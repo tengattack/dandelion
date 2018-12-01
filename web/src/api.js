@@ -1,6 +1,6 @@
 import { ApiError as ApiErrorA } from 'redux-api-middleware'
 
-export const PUBLIC_URL = process.env.PUBLIC_URL
+export const PUBLIC_URL = window.PUBLIC_URL || '/'
 // PUBLIC_URL has last slash
 export const API_URL = PUBLIC_URL + 'api/v1'
 

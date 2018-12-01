@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/tengattack/dandelion/log"
@@ -16,7 +17,7 @@ var (
 )
 
 func init() {
-	baseURLRegexp = regexp.MustCompile(`(<base href)=".*"`)
+	baseURLRegexp = regexp.MustCompile(`(<base href=|\.PUBLIC_URL = )".*"`)
 }
 
 func rootHandler(c *gin.Context) {
@@ -34,9 +35,12 @@ func indexHandler(c *gin.Context) {
 		return
 	}
 	contentType := "text/html"
-	if n := strings.Count(c.Request.URL.Path, "/"); n > 1 {
+	if Conf.Core.PublicURL != "" {
+		// public url
+		res = baseURLRegexp.ReplaceAll(res, []byte(`$1`+strconv.Quote(Conf.Core.PublicURL)))
+	} else if n := strings.Count(c.Request.URL.Path, "/"); n > 1 {
 		// runtime update base path
-		res = baseURLRegexp.ReplaceAll(res, []byte(`$1="`+strings.Repeat("../", n-1)+`"`))
+		res = baseURLRegexp.ReplaceAll(res, []byte(`$1"`+strings.Repeat("../", n-1)+`"`))
 	}
 	c.Data(http.StatusOK, contentType, res)
 }
