@@ -113,8 +113,9 @@ export class AppCommit extends Component {
           <div className="instances">
           {instances.map((instance, i) => {
             const config = configs.find((config) => config.id === instance.config_id)
+            const configStr = config ? formatConfig(config) : `config id=${instance.config_id} deleted`
             return (
-              <span key={i} className="instance" title={'belong to: ' + formatConfig(config)}>
+              <span key={i} className="instance" title={'belong to: ' + configStr}>
                 <span className={classNames('status', INSTANCE_STATUSES[instance.status])}
                       title={INSTANCE_STATUSES[instance.status]}></span>
                 <span className="host">{ instance.host }</span>
