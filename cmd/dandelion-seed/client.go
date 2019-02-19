@@ -36,11 +36,19 @@ func init() {
 // ReadMetadataFromFile read metadata to client config from file
 func ReadMetadataFromFile(appConfig *config.SectionConfig) (*app.ClientConfig, error) {
 	hostname, _ := os.Hostname()
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = hostname
+	}
+	instanceID := os.Getenv("INSTANCE_ID")
+	if instanceID == "" {
+		instanceID = hostname
+	}
 	cfg := app.ClientConfig{
 		ID:         appConfig.ID,
 		AppID:      appConfig.AppID,
-		Host:       hostname,
-		InstanceID: hostname,
+		Host:       host,
+		InstanceID: instanceID,
 		Version:    "0",
 	}
 	for _, metaFile := range appConfig.MetaFiles {

@@ -115,11 +115,11 @@ func LoadConfig(confPath string) (Config, error) {
 	}
 
 	if conf.Kafka.GroupID == "" {
-		hostname := os.Getenv("HOST")
-		if hostname == "" {
-			hostname, _ = os.Hostname()
+		instanceID := os.Getenv("INSTANCE_ID")
+		if instanceID == "" {
+			instanceID, _ = os.Hostname()
 		}
-		conf.Kafka.GroupID = hostname
+		conf.Kafka.GroupID = instanceID
 	}
 
 	// mark id
