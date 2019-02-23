@@ -1,6 +1,8 @@
 package client
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -192,6 +194,41 @@ func (c *DandelionClient) ListFiles(appID string, commitID string) ([]string, er
 	}
 
 	return info.Files, nil
+}
+
+// GetZipArchive get zip archived commit files
+func (c *DandelionClient) GetZipArchive(appID, commitID string) (*zip.Reader, error) {
+	apiURI := APIPrefix + "/archive/" + appID + "/" + commitID + ".zip"
+
+	log.LogAccess.Debugf("GET %s", apiURI)
+
+	req, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("%s%s", c.URL, apiURI),
+		nil)
+	if err != nil {
+		return nil, err
+	}
+
+	InitHTTPRequest(req, false)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// close response
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	log.LogAccess.Debugf("HTTP %s", resp.Status)
+
+	r := bytes.NewReader(body)
+	return zip.NewReader(r, r.Size())
 }
 
 // Download remote file to local

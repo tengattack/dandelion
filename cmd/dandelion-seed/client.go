@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -22,7 +23,8 @@ import (
 
 // errors
 var (
-	ErrFileIsOccupiedByDir = errors.New("config file is occupied by the directory")
+	ErrFileIsOccupiedByDir   = errors.New("config file is occupied by the directory")
+	ErrFileNotFoundInArchive = errors.New("file not found in archive")
 )
 
 var (
@@ -78,6 +80,73 @@ func ReadMetadataFromFile(appConfig *config.SectionConfig) (*app.ClientConfig, e
 	return &cfg, nil
 }
 
+func syncExpectedFile(appID string, except io.Reader, fi os.FileInfo, actualFileName, actualFile string) error {
+	f, err := os.Open(actualFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		// write new directly
+		f, err := os.Create(actualFile)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(f, except)
+		if err != nil {
+			f.Close()
+			return err
+		}
+		f.Close()
+		err = os.Chtimes(actualFile, fi.ModTime(), fi.ModTime())
+		if err != nil {
+			log.LogAccess.Warnf("[%s] chtimes %s error: %v", appID, actualFileName, err)
+		}
+		return nil
+	}
+
+	h := md5.New()
+	_, err = io.Copy(h, f)
+	f.Close()
+	if err != nil {
+		return err
+	}
+	actualMD5 := hex.EncodeToString(h.Sum(nil))
+
+	// compare md5
+	e, err := ioutil.ReadAll(except)
+	if err != nil {
+		return err
+	}
+	h = md5.New()
+	_, err = h.Write(e)
+	if err != nil {
+		return err
+	}
+	exceptMD5 := hex.EncodeToString(h.Sum(nil))
+
+	if actualMD5 != exceptMD5 {
+		log.LogAccess.Debugf("[%s] file %s md5 mismatch: \"%s\" != \"%s\"", appID, actualFileName, actualMD5, exceptMD5)
+
+		f, err := os.Create(actualFile)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(e)
+		if err != nil {
+			f.Close()
+			return err
+		}
+		f.Close()
+		err = os.Chtimes(actualFile, fi.ModTime(), fi.ModTime())
+		if err != nil {
+			log.LogAccess.Warnf("[%s] chtimes %s error: %v", appID, actualFileName, err)
+		}
+		return nil
+	}
+
+	return nil
+}
+
 // ResyncConfigFiles sync config files
 func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files []string) error {
 	log.LogAccess.Infof("[%s] resyncing config files", c.AppID)
@@ -107,9 +176,32 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 		modeVal, _ := strconv.ParseInt(appConfig.Chmod, 8, 32)
 		mode = os.FileMode(modeVal)
 	}
-	for _, file := range files {
-		filePath := path.Join(appConfig.Path, file)
-		err := Client.Download(c.AppID, c.CommitID, file, filePath)
+	z, err := Client.GetZipArchive(c.AppID, c.CommitID)
+	if err != nil {
+		return err
+	}
+	for _, fileName := range files {
+		var zf *zip.File
+		for _, f := range z.File {
+			if f.Name == fileName {
+				zf = f
+				break
+			}
+		}
+		if zf == nil {
+			return ErrFileNotFoundInArchive
+		}
+		filePath := path.Join(appConfig.Path, fileName)
+		err = os.MkdirAll(path.Dir(filePath), os.ModePerm)
+		if err != nil && !os.IsExist(err) {
+			return err
+		}
+		fr, err := zf.Open()
+		if err != nil {
+			return err
+		}
+		err = syncExpectedFile(c.AppID, fr, zf.FileInfo(), fileName, filePath)
+		fr.Close()
 		if err != nil {
 			return err
 		}
