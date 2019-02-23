@@ -11,7 +11,7 @@ import (
 
 const (
 	// UserAgent for http request
-	UserAgent = "dandelion-cli/0.0.1"
+	UserAgent = "dandelion-cli/0.0.2"
 )
 
 // InitHTTPRequest helps to set necessary headers
