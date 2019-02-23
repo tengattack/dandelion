@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	shellwords "github.com/mattn/go-shellwords"
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"
@@ -221,7 +222,11 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 		}
 	}
 	if appConfig.ExecReload != "" {
-		parts := strings.Fields(appConfig.ExecReload)
+		parts, err := shellwords.Parse(appConfig.ExecReload)
+		if err != nil {
+			log.LogError.Errorf("[%s] parse reload command error: %v", c.AppID, err)
+			return err
+		}
 		out, err := exec.Command(parts[0], parts[1:]...).Output()
 		if len(out) > 0 {
 			log.LogAccess.Infof("[%s] exec reload:\n%s", c.AppID, string(out))
