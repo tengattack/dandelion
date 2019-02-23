@@ -686,6 +686,9 @@ func buildArchive(appID, commitID, archiveFilePath string) error {
 
 	log.LogAccess.Infof("building archive for %s/%s", appID, commitID)
 
+	l.Lock()
+	defer l.Unlock()
+
 	// TODO: check commit id belongs to this app id
 
 	// ... retrieving the commit object
