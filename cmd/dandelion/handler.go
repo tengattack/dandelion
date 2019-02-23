@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
@@ -9,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 	"sort"
 	"strconv"
@@ -53,12 +55,14 @@ const (
 
 var (
 	l              *sync.Mutex
+	lArchive       *sync.RWMutex
 	cachedBranches []string
 )
 
 // InitHandlers init http server handlers
 func InitHandlers() error {
 	l = new(sync.Mutex)
+	lArchive = new(sync.RWMutex)
 	return nil
 }
 
@@ -674,6 +678,118 @@ func appGetFileHandler(c *gin.Context) {
 	}
 
 	c.Data(http.StatusOK, "text/plain", d)
+}
+
+func buildArchive(appID, commitID, archiveFilePath string) error {
+	lArchive.Lock()
+	defer lArchive.Unlock()
+
+	log.LogAccess.Infof("building archive for %s/%s", appID, commitID)
+
+	// TODO: check commit id belongs to this app id
+
+	// ... retrieving the commit object
+	commit, err := Repo.CommitObject(plumbing.NewHash(commitID))
+	if err != nil {
+		log.LogError.Errorf("get commit error: %v", err)
+		return err
+	}
+
+	// ... retrieve the tree from the commit
+	tree, err := commit.Tree()
+	if err != nil {
+		log.LogError.Errorf("ls-tree error: %v", err)
+		return err
+	}
+
+	z, err := os.Create(archiveFilePath)
+	if err != nil {
+		return err
+	}
+	defer z.Close()
+
+	zw := zip.NewWriter(z)
+	defer zw.Close()
+
+	// ... get the files iterator and print the file
+	err = tree.Files().ForEach(func(f *object.File) error {
+		if strings.HasPrefix(path.Base(f.Name), ".") {
+			// ignore dot files
+			return nil
+		}
+		fh := &zip.FileHeader{
+			Name:               f.Name,
+			Method:             zip.Deflate,
+			UncompressedSize64: uint64(f.Size),
+		}
+		fh.SetModTime(commit.Author.When)
+		fw, err := zw.CreateHeader(fh)
+		if err != nil {
+			return err
+		}
+		fr, err := f.Reader()
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(fw, fr)
+		return err
+	})
+
+	return err
+}
+
+func appGetArchiveHandler(c *gin.Context) {
+	appID := c.Param("app_id")
+	commitID := c.Param("commit_id")
+
+	if !strings.HasSuffix(commitID, ".zip") {
+		abortWithError(c, http.StatusBadRequest, "unsupported archive type")
+		return
+	}
+	commitID = commitID[0 : len(commitID)-4]
+
+	archivePath := path.Join(Conf.Core.ArchivePath, appID)
+	err := os.MkdirAll(archivePath, os.ModePerm)
+	if err != nil {
+		log.LogError.Errorf("mkdirp error: %v", err)
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	archiveFilePath := path.Join(archivePath, commitID+".zip")
+	// get archive
+	lArchive.RLock()
+	f, err := os.Open(archiveFilePath)
+	lArchive.RUnlock()
+
+	if err != nil && os.IsNotExist(err) {
+		// build archive
+		err = buildArchive(appID, commitID, archiveFilePath)
+		if err != nil {
+			log.LogError.Errorf("build archive error: %v", err)
+			abortWithError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		lArchive.RLock()
+		f, err = os.Open(archiveFilePath)
+		lArchive.RUnlock()
+	}
+
+	if err != nil {
+		log.LogError.Errorf("get archive error: %v", err)
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer f.Close()
+
+	d, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.LogError.Errorf("read archive file error: %v", err)
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.Data(http.StatusOK, "application/octet-stream", d)
 }
 
 func appListInstancesHandler(c *gin.Context) {

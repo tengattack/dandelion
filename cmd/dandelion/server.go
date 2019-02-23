@@ -79,6 +79,7 @@ func routerEngine() *gin.Engine {
 	g.GET("/list/:app_id/instances", appListInstancesHandler)
 	g.GET("/list/:app_id/tree/:commit_id", appListFilesHandler)
 	g.GET("/list/:app_id/tree/:commit_id/*path", appGetFileHandler)
+	g.GET("/archive/:app_id/:commit_id", appGetArchiveHandler) // ends with `.zip`
 	g.POST("/publish/:app_id", appPublishConfigHandler)
 	g.POST("/rollback/:app_id", appRollbackConfigHandler)
 	g.GET("/match/:app_id", appMatchConfigHandler)

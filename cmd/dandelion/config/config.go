@@ -25,6 +25,7 @@ type SectionCore struct {
 	Mode           string `yaml:"mode"`
 	PublicURL      string `yaml:"public_url"`
 	RepositoryPath string `yaml:"repository_path"`
+	ArchivePath    string `yaml:"archive_path"`
 	RemoteURL      string `yaml:"remote_url"`
 }
 

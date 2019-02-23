@@ -5,6 +5,7 @@ core:
   mode: 'release'
   public_url: '' # public url for web browser request, need last slash
   repository_path: /tmp/gittest
+  archive_path: /tmp/gitarchive
   remote_url: git@github.com:tengattack/gittest.git
 
 log:
