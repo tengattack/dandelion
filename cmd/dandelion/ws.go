@@ -68,6 +68,7 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 			_, err = DB.NamedExec("INSERT INTO "+TableNameInstances+" (app_id, host, instance_id, config_id, commit_id, status, created_time, updated_time)"+
 				" VALUES (:app_id, :host, :instance_id, :config_id, :commit_id, :status, :created_time, :updated_time)", &row)
 			if err != nil {
+				log.LogError.Errorf("create new instance record failed: %v", err)
 				return err
 			}
 		} else if err != nil {
