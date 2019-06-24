@@ -799,8 +799,10 @@ func appListInstancesHandler(c *gin.Context) {
 	appID := c.Param("app_id")
 
 	var statuses []app.Status
-	err := DB.Select(&statuses, "SELECT * FROM "+TableNameInstances+" WHERE app_id = ? ORDER BY updated_time DESC",
-		appID)
+	// show active instances from last day
+	t := time.Now().AddDate(0, 0, -1).Unix()
+	err := DB.Select(&statuses, "SELECT * FROM "+TableNameInstances+" WHERE app_id = ? AND updated_time >= ? ORDER BY updated_time DESC",
+		appID, t)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
