@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tengattack/dandelion/log"
-
 	"github.com/gin-gonic/gin"
+	"github.com/tengattack/dandelion/log"
 )
 
 var (
@@ -63,6 +62,9 @@ func routerEngine() *gin.Engine {
 	r.GET("/index.html", servePublic)
 	r.GET("/a/*app_id", indexHandler)
 	r.GET("/", indexHandler)
+
+	// health
+	r.GET("/health", appHealthHandler)
 
 	// expvar
 	//r.GET("/debug/vars", expvar.Handler())

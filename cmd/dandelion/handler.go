@@ -146,6 +146,13 @@ func getAppCommit(branch string, commit *object.Commit) Commit {
 	}
 }
 
+func appHealthHandler(c *gin.Context) {
+	// check whether lock timeout
+	l.Lock()
+	defer l.Unlock()
+	succeed(c, "success")
+}
+
 func appSyncHandler(c *gin.Context) {
 	appID := c.Param("app_id")
 

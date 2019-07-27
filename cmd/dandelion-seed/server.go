@@ -26,6 +26,7 @@ func routerEngine() *gin.Engine {
 	r.Use(gin.Recovery())
 	r.Use(log.LogMiddleware())
 
+	r.GET("/health", appHealthHandler)
 	r.POST("/check/:app_id", appCheckHandler)
 
 	return r

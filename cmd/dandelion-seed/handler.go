@@ -54,6 +54,10 @@ func HandleMessage(message string) error {
 	return nil
 }
 
+func appHealthHandler(c *gin.Context) {
+	succeed(c, "success")
+}
+
 func appCheckHandler(c *gin.Context) {
 	appID := c.Param("app_id")
 
