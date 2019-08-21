@@ -7,11 +7,11 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/tengattack/dandelion/cmd/dandelion/config"
 )
 
 // InitDatabase init database connection
-func InitDatabase() (*sqlx.DB, error) {
-	dbConf := Conf.Database
+func InitDatabase(dbConf *config.SectionDatabase) (*sqlx.DB, error) {
 	db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4,utf8", dbConf.User, dbConf.Pass, dbConf.Host, dbConf.Port, dbConf.Name))
 
 	if err != nil {

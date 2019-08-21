@@ -1,4 +1,4 @@
-package main
+package controllers
 
 import (
 	"database/sql"
@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/log"
 )
 
@@ -38,7 +39,7 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 			}
 			for _, s := range payload {
 				s.UpdatedTime = time.Now().Unix()
-				_, err = DB.NamedExec("UPDATE "+TableNameInstances+
+				_, err = config.DB.NamedExec("UPDATE "+TableNameInstances+
 					" SET config_id = :config_id, commit_id = :commit_id, status = :status, updated_time = :updated_time"+
 					" WHERE app_id = :app_id AND host = :host AND instance_id = :instance_id", &s)
 				if err != nil {
@@ -55,7 +56,7 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 			return err
 		}
 		var row app.Status
-		err = DB.Get(&row, "SELECT id, config_id, commit_id, status FROM "+TableNameInstances+
+		err = config.DB.Get(&row, "SELECT id, config_id, commit_id, status FROM "+TableNameInstances+
 			" WHERE app_id = ? AND host = ? AND instance_id = ? LIMIT 1",
 			payload.AppID, payload.Host, payload.InstanceID)
 		if err == sql.ErrNoRows {
@@ -65,7 +66,7 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 			row.Status = payload.Status
 			row.CreatedTime = time.Now().Unix()
 			row.UpdatedTime = row.CreatedTime
-			_, err = DB.NamedExec("INSERT INTO "+TableNameInstances+" (app_id, host, instance_id, config_id, commit_id, status, created_time, updated_time)"+
+			_, err = config.DB.NamedExec("INSERT INTO "+TableNameInstances+" (app_id, host, instance_id, config_id, commit_id, status, created_time, updated_time)"+
 				" VALUES (:app_id, :host, :instance_id, :config_id, :commit_id, :status, :created_time, :updated_time)", &row)
 			if err != nil {
 				log.LogError.Errorf("create new instance record failed: %v", err)
@@ -81,12 +82,12 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 				// update all
 				row.ConfigID = payload.ConfigID
 				row.CommitID = payload.CommitID
-				_, err = DB.NamedExec("UPDATE "+TableNameInstances+
+				_, err = config.DB.NamedExec("UPDATE "+TableNameInstances+
 					" SET config_id = :config_id, commit_id = :commit_id, status = :status, updated_time = :updated_time "+
 					" WHERE id = :id", &row)
 			} else {
 				// update status only
-				_, err = DB.NamedExec("UPDATE "+TableNameInstances+
+				_, err = config.DB.NamedExec("UPDATE "+TableNameInstances+
 					" SET status = :status, updated_time = :updated_time "+
 					" WHERE id = :id", &row)
 			}

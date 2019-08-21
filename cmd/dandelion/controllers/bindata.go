@@ -13,7 +13,7 @@
 // ../../web/public/manifest.json
 // DO NOT EDIT!
 
-package main
+package controllers
 
 import (
 	"bytes"
@@ -350,17 +350,17 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"assets/css/bundle.8fa18c68.css": assetsCssBundle8fa18c68Css,
-	"assets/css/bundle.a5ca8378.css": assetsCssBundleA5ca8378Css,
-	"assets/css/bundle.a6ae7c93.css": assetsCssBundleA6ae7c93Css,
+	"assets/css/bundle.8fa18c68.css":           assetsCssBundle8fa18c68Css,
+	"assets/css/bundle.a5ca8378.css":           assetsCssBundleA5ca8378Css,
+	"assets/css/bundle.a6ae7c93.css":           assetsCssBundleA6ae7c93Css,
 	"assets/images/build/loading.a9f3d34f.svg": assetsImagesBuildLoadingA9f3d34fSvg,
-	"assets/images/build/logo.9f2b0f66.png": assetsImagesBuildLogo9f2b0f66Png,
-	"assets/js/bundle.8fa18c68.js": assetsJsBundle8fa18c68Js,
-	"assets/js/bundle.a5ca8378.js": assetsJsBundleA5ca8378Js,
-	"assets/js/bundle.a6ae7c93.js": assetsJsBundleA6ae7c93Js,
-	"favicon.ico": faviconIco,
-	"index.html": indexHtml,
-	"manifest.json": manifestJson,
+	"assets/images/build/logo.9f2b0f66.png":    assetsImagesBuildLogo9f2b0f66Png,
+	"assets/js/bundle.8fa18c68.js":             assetsJsBundle8fa18c68Js,
+	"assets/js/bundle.a5ca8378.js":             assetsJsBundleA5ca8378Js,
+	"assets/js/bundle.a6ae7c93.js":             assetsJsBundleA6ae7c93Js,
+	"favicon.ico":                              faviconIco,
+	"index.html":                               indexHtml,
+	"manifest.json":                            manifestJson,
 }
 
 // AssetDir returns the file names below a certain
@@ -402,6 +402,7 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
+
 var _bintree = &bintree{nil, map[string]*bintree{
 	"assets": &bintree{nil, map[string]*bintree{
 		"css": &bintree{nil, map[string]*bintree{
@@ -412,7 +413,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"images": &bintree{nil, map[string]*bintree{
 			"build": &bintree{nil, map[string]*bintree{
 				"loading.a9f3d34f.svg": &bintree{assetsImagesBuildLoadingA9f3d34fSvg, map[string]*bintree{}},
-				"logo.9f2b0f66.png": &bintree{assetsImagesBuildLogo9f2b0f66Png, map[string]*bintree{}},
+				"logo.9f2b0f66.png":    &bintree{assetsImagesBuildLogo9f2b0f66Png, map[string]*bintree{}},
 			}},
 		}},
 		"js": &bintree{nil, map[string]*bintree{
@@ -421,8 +422,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 			"bundle.a6ae7c93.js": &bintree{assetsJsBundleA6ae7c93Js, map[string]*bintree{}},
 		}},
 	}},
-	"favicon.ico": &bintree{faviconIco, map[string]*bintree{}},
-	"index.html": &bintree{indexHtml, map[string]*bintree{}},
+	"favicon.ico":   &bintree{faviconIco, map[string]*bintree{}},
+	"index.html":    &bintree{indexHtml, map[string]*bintree{}},
 	"manifest.json": &bintree{manifestJson, map[string]*bintree{}},
 }}
 
@@ -472,4 +473,3 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
-

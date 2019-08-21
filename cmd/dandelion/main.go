@@ -6,22 +6,10 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/log"
 	"github.com/tengattack/dandelion/mq"
 	"github.com/tengattack/dandelion/repository"
-)
-
-var (
-	// Conf is the main config
-	Conf config.Config
-	// Repo is git repository
-	Repo *repository.Repository
-	// DB is Database
-	DB *sqlx.DB
-	// MQ is MessageQueue
-	MQ *mq.MessageQueue
 )
 
 func main() {
@@ -54,35 +42,35 @@ func main() {
 		conf.Log.AccessLevel = "debug"
 		conf.Log.ErrorLevel = "debug"
 	}
-	Conf = conf
+	config.Conf = conf
 
-	err = log.InitLog(&Conf.Log)
+	err = log.InitLog(&config.Conf.Log)
 	if err != nil {
 		panic(err)
 	}
 
-	Repo, err = repository.InitRepository(conf.Core.RepositoryPath, conf.Core.RemoteURL)
+	config.Repo, err = repository.InitRepository(conf.Core.RepositoryPath, conf.Core.RemoteURL)
 	if err != nil {
 		log.LogError.Errorf("init repository error: %v", err)
 		panic(err)
 	}
 
-	db, err := InitDatabase()
+	db, err := InitDatabase(&config.Conf.Database)
 	if err != nil {
 		log.LogError.Errorf("database error: %v", err)
 		panic(err)
 	}
 	defer db.Close()
-	DB = db
+	config.DB = db
 
-	if Conf.Kafka.Enabled {
-		m, err := mq.NewProducer(Conf.Kafka.Servers, Conf.Kafka.Topic)
+	if config.Conf.Kafka.Enabled {
+		m, err := mq.NewProducer(config.Conf.Kafka.Servers, config.Conf.Kafka.Topic)
 		if err != nil {
 			log.LogError.Errorf("database error: %v", err)
 			panic(err)
 		}
 		defer m.Close()
-		MQ = m
+		config.MQ = m
 	}
 
 	err = RunHTTPServer()

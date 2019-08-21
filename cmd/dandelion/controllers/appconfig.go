@@ -1,4 +1,4 @@
-package main
+package controllers
 
 import (
 	"archive/zip"
@@ -18,12 +18,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tengattack/dandelion/app"
-	"github.com/tengattack/dandelion/client"
-	"github.com/tengattack/dandelion/log"
-
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/glob"
+	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/client"
+	"github.com/tengattack/dandelion/cmd/dandelion/config"
+	"github.com/tengattack/dandelion/log"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -59,13 +59,6 @@ var (
 	cachedBranches []string
 )
 
-// InitHandlers init http server handlers
-func InitHandlers() error {
-	l = new(sync.Mutex)
-	lArchive = new(sync.RWMutex)
-	return nil
-}
-
 func abortWithError(c *gin.Context, code int, message string) {
 	c.AbortWithStatusJSON(code, gin.H{
 		"code": code,
@@ -82,7 +75,7 @@ func succeed(c *gin.Context, message interface{}) {
 
 func getBranches(force bool) ([]string, error) {
 	if force || cachedBranches == nil {
-		rbs, err := Repo.Branches()
+		rbs, err := config.Repo.Branches()
 		if err != nil {
 			log.LogError.Errorf("get refs error: %v", err)
 			return nil, err
@@ -169,7 +162,7 @@ func appSyncHandler(c *gin.Context) {
 		}
 		for _, branch := range branches {
 			if appID == getAppID(branch) {
-				err = Repo.Pull(branch)
+				err = config.Repo.Pull(branch)
 				if err != nil && err != git.NoErrAlreadyUpToDate {
 					log.LogError.Errorf("pull error: %v", err)
 					abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -178,7 +171,7 @@ func appSyncHandler(c *gin.Context) {
 			}
 		}
 	} else {
-		err = Repo.SyncBranches()
+		err = config.Repo.SyncBranches()
 		if err != nil {
 			log.LogError.Errorf("sync branches error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -192,7 +185,7 @@ func appSyncHandler(c *gin.Context) {
 		}
 	}
 
-	h, err := Repo.Head()
+	h, err := config.Repo.Head()
 	if err != nil {
 		log.LogError.Errorf("head error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -255,7 +248,7 @@ func appPublishConfigHandler(c *gin.Context) {
 	// TODO: check commit id belongs to this app id
 
 	// ... retrieving the commit object
-	commit, err := Repo.CommitObject(plumbing.NewHash(commitID))
+	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
 		log.LogError.Errorf("get commit error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -292,7 +285,7 @@ func appPublishConfigHandler(c *gin.Context) {
 	}
 
 	t := time.Now().Unix()
-	config := app.AppConfig{
+	appConfig := app.AppConfig{
 		AppID:       appID,
 		Status:      1,
 		Version:     version,
@@ -305,27 +298,27 @@ func appPublishConfigHandler(c *gin.Context) {
 		UpdatedTime: t,
 	}
 
-	r, err := DB.NamedExec("INSERT INTO "+TableNameConfigs+
+	r, err := config.DB.NamedExec("INSERT INTO "+TableNameConfigs+
 		" (app_id, status, version, host, instance_id, commit_id, md5sum, author, created_time, updated_time)"+
-		" VALUES (:app_id, :status, :version, :host, :instance_id, :commit_id, :md5sum, :author, :created_time, :updated_time)", &config)
+		" VALUES (:app_id, :status, :version, :host, :instance_id, :commit_id, :md5sum, :author, :created_time, :updated_time)", &appConfig)
 	if err != nil {
 		log.LogError.Errorf("db insert error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	config.ID, err = r.LastInsertId()
+	appConfig.ID, err = r.LastInsertId()
 	if err != nil {
 		log.LogError.Errorf("get last insert id error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if MQ != nil {
+	if config.MQ != nil {
 		m := app.NotifyMessage{
 			AppID:  appID,
 			Event:  "publish",
-			Config: config,
+			Config: appConfig,
 		}
 		message, err := json.Marshal(m)
 		if err != nil {
@@ -333,7 +326,7 @@ func appPublishConfigHandler(c *gin.Context) {
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
-		err = MQ.Publish(string(message))
+		err = config.MQ.Publish(string(message))
 		if err != nil {
 			log.LogError.Errorf("publish message error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -345,7 +338,7 @@ func appPublishConfigHandler(c *gin.Context) {
 		"app_id": appID,
 		// TODO: use the correct branch name instead of appID
 		"commit": getAppCommit(appID, commit),
-		"config": config,
+		"config": appConfig,
 	})
 }
 
@@ -359,8 +352,8 @@ func appRollbackConfigHandler(c *gin.Context) {
 		return
 	}
 
-	var config app.AppConfig
-	err := DB.Get(&config, "SELECT * FROM "+TableNameConfigs+" WHERE id = ? AND status = 1", id)
+	var appConfig app.AppConfig
+	err := config.DB.Get(&appConfig, "SELECT * FROM "+TableNameConfigs+" WHERE id = ? AND status = 1", id)
 	if err == sql.ErrNoRows {
 		abortWithError(c, http.StatusNotFound, err.Error())
 		return
@@ -370,25 +363,25 @@ func appRollbackConfigHandler(c *gin.Context) {
 		return
 	}
 
-	if config.AppID != appID {
+	if appConfig.AppID != appID {
 		abortWithError(c, http.StatusForbidden, "config id does not belong to specified app id")
 		return
 	}
 
 	t := time.Now().Unix()
-	_, err = DB.Exec("UPDATE "+TableNameConfigs+" SET status = 0, updated_time = ? WHERE id = ?", t, id)
+	_, err = config.DB.Exec("UPDATE "+TableNameConfigs+" SET status = 0, updated_time = ? WHERE id = ?", t, id)
 	if err != nil {
 		log.LogError.Errorf("db update error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if MQ != nil {
+	if config.MQ != nil {
 		// rollback, notify all nodes
 		m := app.NotifyMessage{
 			AppID:  appID,
 			Event:  "rollback",
-			Config: config,
+			Config: appConfig,
 		}
 		message, err := json.Marshal(m)
 		if err != nil {
@@ -396,7 +389,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
-		err = MQ.Publish(string(message))
+		err = config.MQ.Publish(string(message))
 		if err != nil {
 			log.LogError.Errorf("publish message error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -406,7 +399,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 
 	succeed(c, gin.H{
 		"app_id": appID,
-		"config": config,
+		"config": appConfig,
 	})
 }
 
@@ -419,7 +412,7 @@ func appMatchConfigHandler(c *gin.Context) {
 
 	var configs []app.AppConfig
 	// TODO: apply limit & offset
-	err := DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 AND version <= ? ORDER BY created_time DESC",
+	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 AND version <= ? ORDER BY created_time DESC",
 		appID, version)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)
@@ -427,17 +420,17 @@ func appMatchConfigHandler(c *gin.Context) {
 		return
 	}
 
-	for _, config := range configs {
-		glob1, err1 := glob.Compile(config.Host)
-		glob2, err2 := glob.Compile(config.InstanceID)
+	for _, appConfig := range configs {
+		glob1, err1 := glob.Compile(appConfig.Host)
+		glob2, err2 := glob.Compile(appConfig.InstanceID)
 		if err1 != nil || err2 != nil {
-			log.LogAccess.Warnf("config %d host or instance_id glob complie failed", config.ID)
+			log.LogAccess.Warnf("config %d host or instance_id glob complie failed", appConfig.ID)
 			continue
 		}
 		if glob1.Match(host) && glob2.Match(instanceID) {
 			succeed(c, gin.H{
 				"app_id": appID,
-				"config": config,
+				"config": appConfig,
 			})
 			return
 		}
@@ -455,10 +448,10 @@ func appCheckHandler(c *gin.Context) {
 		return
 	}
 
-	if MQ != nil {
+	if config.MQ != nil {
 		// TODO: using json.Marshal
 		message := fmt.Sprintf(`{"app_id":"%s","event":"%s"}`, appID, "check")
-		err := MQ.Publish(message)
+		err := config.MQ.Publish(message)
 		if err != nil {
 			log.LogError.Errorf("publish message error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -475,7 +468,7 @@ func appListConfigsHandler(c *gin.Context) {
 	appID := c.Param("app_id")
 
 	var configs []app.AppConfig
-	err := DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 ORDER BY created_time DESC",
+	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 ORDER BY created_time DESC",
 		appID)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)
@@ -499,7 +492,7 @@ func appListCommitsHandler(c *gin.Context) {
 	l.Lock()
 	defer l.Unlock()
 
-	wt, err := Repo.Worktree()
+	wt, err := config.Repo.Worktree()
 	if err != nil {
 		log.LogError.Errorf("worktree error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -523,7 +516,7 @@ func appListCommitsHandler(c *gin.Context) {
 				return
 			}
 
-			commits, err := Repo.Log(&git.LogOptions{})
+			commits, err := config.Repo.Log(&git.LogOptions{})
 			if err != nil {
 				log.LogError.Errorf("log error: %v", err)
 				abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -577,7 +570,7 @@ func appListFilesHandler(c *gin.Context) {
 	// TODO: check commit id belongs to this app id
 
 	// ... retrieving the commit object
-	commit, err := Repo.CommitObject(plumbing.NewHash(commitID))
+	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
 		log.LogError.Errorf("get commit error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -644,7 +637,7 @@ func appGetFileHandler(c *gin.Context) {
 	// TODO: check commit id belongs to this app id
 
 	// ... retrieving the commit object
-	commit, err := Repo.CommitObject(plumbing.NewHash(commitID))
+	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
 		log.LogError.Errorf("get commit error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
@@ -699,7 +692,7 @@ func buildArchive(appID, commitID, archiveFilePath string) error {
 	// TODO: check commit id belongs to this app id
 
 	// ... retrieving the commit object
-	commit, err := Repo.CommitObject(plumbing.NewHash(commitID))
+	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
 		log.LogError.Errorf("get commit error: %v", err)
 		return err
@@ -758,7 +751,7 @@ func appGetArchiveHandler(c *gin.Context) {
 	}
 	commitID = commitID[0 : len(commitID)-4]
 
-	archivePath := path.Join(Conf.Core.ArchivePath, appID)
+	archivePath := path.Join(config.Conf.Core.ArchivePath, appID)
 	err := os.MkdirAll(archivePath, os.ModePerm)
 	if err != nil {
 		log.LogError.Errorf("mkdirp error: %v", err)
@@ -808,7 +801,7 @@ func appListInstancesHandler(c *gin.Context) {
 	var statuses []app.Status
 	// show active instances from last day
 	t := time.Now().AddDate(0, 0, -1).Unix()
-	err := DB.Select(&statuses, "SELECT * FROM "+TableNameInstances+" WHERE app_id = ? AND updated_time >= ? ORDER BY updated_time DESC",
+	err := config.DB.Select(&statuses, "SELECT * FROM "+TableNameInstances+" WHERE app_id = ? AND updated_time >= ? ORDER BY updated_time DESC",
 		appID, t)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)
