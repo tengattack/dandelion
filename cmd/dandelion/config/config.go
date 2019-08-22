@@ -11,10 +11,12 @@ import (
 
 // Config is config structure.
 type Config struct {
-	Core     SectionCore     `yaml:"core"`
-	Log      log.Config      `yaml:"log"`
-	Database SectionDatabase `yaml:"database"`
-	Kafka    SectionKafka    `yaml:"kafka"`
+	Core       SectionCore       `yaml:"core"`
+	Log        log.Config        `yaml:"log"`
+	Database   SectionDatabase   `yaml:"database"`
+	Kafka      SectionKafka      `yaml:"kafka"`
+	Kubernetes SectionKubernetes `yaml:"kubernetes"`
+	Registry   SectionRegistry   `yaml:"registry"`
 }
 
 // SectionCore is sub section of config.
@@ -44,6 +46,20 @@ type SectionKafka struct {
 	Enabled bool     `yaml:"enabled"`
 	Topic   string   `yaml:"topic"`
 	Servers []string `yaml:"servers"`
+}
+
+// SectionKubernetes is sub section of config.
+type SectionKubernetes struct {
+	InCluster bool   `yaml:"in_cluster"`
+	Config    string `yaml:"config"`
+	Namespace string `yaml:"namespace"`
+}
+
+// SectionRegistry is sub section of config.
+type SectionRegistry struct {
+	Endpoint string `yaml:"endpoint"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 // BuildDefaultConf is default config setting.
@@ -78,6 +94,12 @@ func BuildDefaultConf() Config {
 	// Kafka
 	conf.Kafka.Enabled = true
 	conf.Kafka.Topic = ""
+
+	// Kubernetes
+	conf.Kubernetes.Namespace = "default"
+
+	// Registry
+	conf.Registry.Endpoint = ""
 
 	return conf
 }

@@ -24,7 +24,25 @@ func init() {
 func InitHandlers() (*gin.Engine, error) {
 	l = new(sync.Mutex)
 	lArchive = new(sync.RWMutex)
+	err := initKubeClient()
+	if err != nil {
+		return nil, err
+	}
 	return routerEngine(), nil
+}
+
+func abortWithError(c *gin.Context, code int, message string) {
+	c.AbortWithStatusJSON(code, gin.H{
+		"code": code,
+		"info": message,
+	})
+}
+
+func succeed(c *gin.Context, message interface{}) {
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"info": message,
+	})
 }
 
 func rootHandler(c *gin.Context) {
@@ -81,6 +99,8 @@ func routerEngine() *gin.Engine {
 	r.GET("/connect/push", wsPushHandler)
 
 	g := r.Group("/api/v1")
+
+	// app
 	g.POST("/sync", appSyncHandler)
 	g.POST("/sync/:app_id", appSyncHandler)
 	g.GET("/list", appListHandler)
@@ -94,6 +114,12 @@ func routerEngine() *gin.Engine {
 	g.POST("/rollback/:app_id", appRollbackConfigHandler)
 	g.GET("/match/:app_id", appMatchConfigHandler)
 	g.POST("/check/:app_id", appCheckHandler)
+
+	// kube
+	g.GET("/kube/list", kubeListHandler)
+	g.GET("/kube/listtags/:deployment", kubeListTagsHandler)
+	g.POST("/kube/setversiontag/:deployment", kubeSetVersionTagHandler)
+	g.POST("/kube/rollback/:deployment", kubeRollbackHandler)
 
 	return r
 }

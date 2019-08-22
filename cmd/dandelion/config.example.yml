@@ -34,3 +34,13 @@ kafka:
   topic: test
   servers:
     - 127.0.0.1:9092
+
+kubernetes:
+  in_cluster: false # default: false
+  config: '~/.kube/config'
+  namespace: 'default' # default: 'default'
+
+registry:
+  endpoint: 'http://127.0.0.1:5000'
+  #username:
+  #password:

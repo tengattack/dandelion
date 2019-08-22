@@ -59,20 +59,6 @@ var (
 	cachedBranches []string
 )
 
-func abortWithError(c *gin.Context, code int, message string) {
-	c.AbortWithStatusJSON(code, gin.H{
-		"code": code,
-		"info": message,
-	})
-}
-
-func succeed(c *gin.Context, message interface{}) {
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"info": message,
-	})
-}
-
 func getBranches(force bool) ([]string, error) {
 	if force || cachedBranches == nil {
 		rbs, err := config.Repo.Branches()
