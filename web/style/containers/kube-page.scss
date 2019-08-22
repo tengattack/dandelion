@@ -1,0 +1,7 @@
+#KubePage {
+  margin: 20px 0;
+}
+
+.deployment-list {
+  @extend .app-list;
+}

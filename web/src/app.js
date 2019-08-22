@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 
 import logo from '../images/logo.png'
 
-import { AppDetails, Homepage, NotFound } from './containers'
+import { AppDetails, Deployment, Homepage, KubePage, NotFound } from './containers'
 
 class App extends Component {
   render() {
@@ -17,7 +17,9 @@ class App extends Component {
         </header>
         <Switch>
           <Route exact path='/' component={Homepage} />
+          <Route path='/kube' component={KubePage} />
           <Route path='/a/:appId' component={AppDetails} />
+          <Route path='/dp/:name' component={Deployment} />
           <Route component={NotFound} />
         </Switch>
       </div>

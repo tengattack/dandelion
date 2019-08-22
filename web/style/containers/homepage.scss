@@ -1,24 +1,25 @@
 #Homepage {
   margin: 20px 0;
-  .app-list {
-    width: 360px;
-    margin: 0 auto;
-    border: 1px solid $border-color;
-    .item {
-      display: block;
-      height: 60px;
-      padding: 10px;
-      line-height: 40px;
-      font-size: 1.2em;
-      border-bottom: 1px solid $border-color;
-      cursor: pointer;
-      &:last-child {
-        border-bottom: none;
-      }
-      &:hover {
-        background-color: $grey-dark;
-        transition: background-color $hover-trans;
-      }
+}
+
+.app-list {
+  width: 360px;
+  margin: 0 auto;
+  border: 1px solid $border-color;
+  .item {
+    display: block;
+    height: 60px;
+    padding: 10px;
+    line-height: 40px;
+    font-size: 1.2em;
+    border-bottom: 1px solid $border-color;
+    cursor: pointer;
+    &:last-child {
+      border-bottom: none;
+    }
+    &:hover {
+      background-color: $grey-dark;
+      transition: background-color $hover-trans;
     }
   }
 }

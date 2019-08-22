@@ -1,3 +1,5 @@
 export * from './app-details'
+export * from './deployment'
 export * from './homepage'
+export * from './kube-page'
 export * from './notfound'
