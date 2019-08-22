@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/cmd/dandelion/registry"
+	"github.com/tengattack/dandelion/log"
+	appsv1 "k8s.io/api/apps/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -21,21 +24,25 @@ import (
 
 // Deployment for kube deployment
 type Deployment struct {
-	Name     string `json:"name"`
-	Image    string `json:"image"`
-	Replicas int    `json:"replicas"`
-	Revision int64  `json:"revision"`
+	Name      string `json:"name"`
+	ImageName string `json:"image_name"`
+	Image     string `json:"image"`
+	Replicas  int    `json:"replicas"`
+	Revision  int64  `json:"revision"`
 }
 
 // consts
 const (
-	RevisionAnnotation = "deployment.kubernetes.io/revision"
+	RevisionAnnotation    = "deployment.kubernetes.io/revision"
+	DandelionManagedLabel = "dandelion-managed"
 )
 
 var (
 	clientset         *kubernetes.Clientset
 	deploymentsClient typedappsv1.DeploymentInterface
 	registryClient    *registry.Client
+
+	errDeploymentIsNotManaged = errors.New("deployment is not managed by dandelion")
 )
 
 func initKubeClient() error {
@@ -59,6 +66,32 @@ func initKubeClient() error {
 	return nil
 }
 
+func getImageName(dp *appsv1.Deployment) string {
+	if image, ok := dp.Labels["image"]; ok {
+		return image
+	}
+	return dp.Name
+}
+
+func isManaged(dp *appsv1.Deployment) bool {
+	_, ok := dp.Labels[DandelionManagedLabel]
+	return ok
+}
+
+func getDeployment(dp *appsv1.Deployment) *Deployment {
+	revision, _ := strconv.ParseInt(dp.Annotations[RevisionAnnotation], 10, 64)
+	d := Deployment{
+		Name:      dp.Name,
+		ImageName: getImageName(dp),
+		Replicas:  int(*dp.Spec.Replicas),
+		Revision:  revision,
+	}
+	if len(dp.Spec.Template.Spec.Containers) > 0 {
+		d.Image = dp.Spec.Template.Spec.Containers[0].Image
+	}
+	return &d
+}
+
 func kubeListHandler(c *gin.Context) {
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
@@ -66,14 +99,15 @@ func kubeListHandler(c *gin.Context) {
 		return
 	}
 
-	// TODO: check permissions
-	ds := make([]Deployment, len(list.Items))
-	for i, d := range list.Items {
-		revision, _ := strconv.ParseInt(d.Annotations[RevisionAnnotation], 10, 64)
-		ds[i] = Deployment{Name: d.Name, Replicas: int(*d.Spec.Replicas), Revision: revision}
-		if len(d.Spec.Template.Spec.Containers) > 0 {
-			ds[i].Image = d.Spec.Template.Spec.Containers[0].Image
+	ds := make([]*Deployment, 0, len(list.Items))
+	for _, dp := range list.Items {
+		// check permissions
+		if !isManaged(&dp) {
+			continue
 		}
+
+		d := getDeployment(&dp)
+		ds = append(ds, d)
 	}
 
 	succeed(c, gin.H{"deployments": ds})
@@ -91,22 +125,32 @@ func kubeSetVersionTagHandler(c *gin.Context) {
 		return
 	}
 
+	var dp *appsv1.Deployment
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		// Retrieve the latest version of Deployment before attempting update
 		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
-		dp, getErr := deploymentsClient.Get(deployment, metav1.GetOptions{})
-		// TODO: check permissions
+		result, getErr := deploymentsClient.Get(deployment, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
 		}
+		// check permissions
+		if !isManaged(result) {
+			return errDeploymentIsNotManaged
+		}
 
-		// TODO: get registry from labels
-		image := fmt.Sprintf("%s/%s:%s", u.Host, deployment, tag)
+		// get image name from labels
+		imageName := getImageName(result)
+		image := fmt.Sprintf("%s/%s:%s", u.Host, imageName, tag)
 
-		dp.Spec.Template.Spec.Containers[0].Image = image // change image
-		_, updateErr := deploymentsClient.Update(dp)
+		result.Spec.Template.Spec.Containers[0].Image = image // change image
+		var updateErr error
+		dp, updateErr = deploymentsClient.Update(result)
 		return updateErr
 	})
+	if retryErr == errDeploymentIsNotManaged {
+		abortWithError(c, http.StatusForbidden, retryErr.Error())
+		return
+	}
 	if retryErr != nil {
 		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("deployment set-image error: %v", retryErr))
 		return
@@ -114,16 +158,20 @@ func kubeSetVersionTagHandler(c *gin.Context) {
 
 	// TODO: trigger events
 
-	succeed(c, gin.H{"ok": 1})
+	succeed(c, gin.H{"deployment": getDeployment(dp), "ok": 1})
 }
 
 func kubeRollbackHandler(c *gin.Context) {
 	deployment := c.Param("deployment")
 
 	dp, err := deploymentsClient.Get(deployment, metav1.GetOptions{})
-	// TODO: check permissions
 	if err != nil {
 		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("deployment get error: %v", err))
+		return
+	}
+	// check permissions
+	if !isManaged(dp) {
+		abortWithError(c, http.StatusForbidden, errDeploymentIsNotManaged.Error())
 		return
 	}
 
@@ -147,27 +195,41 @@ func kubeRollbackHandler(c *gin.Context) {
 
 	// TODO: trigger events
 
-	succeed(c, gin.H{"ok": 1})
+	var d *Deployment
+	dpNew, err := deploymentsClient.Get(deployment, metav1.GetOptions{})
+	if err != nil {
+		log.LogError.Errorf("deployment get after rollback error: %v", err)
+		// PASS
+	} else {
+		d = getDeployment(dpNew)
+	}
+
+	succeed(c, gin.H{"deployment": d, "ok": 1})
 }
 
 func kubeListTagsHandler(c *gin.Context) {
 	deployment := c.Param("deployment")
 
-	_, err := deploymentsClient.Get(deployment, metav1.GetOptions{})
-	// TODO: check permissions
+	dp, err := deploymentsClient.Get(deployment, metav1.GetOptions{})
 	if err != nil {
 		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("deployment get error: %v", err))
 		return
 	}
+	// check permissions
+	if !isManaged(dp) {
+		abortWithError(c, http.StatusForbidden, errDeploymentIsNotManaged.Error())
+		return
+	}
 
-	// TODO: get registry from labels
-	tags, err := registryClient.ListTags(deployment)
+	// get image name from labels
+	imageName := getImageName(dp)
+	tags, err := registryClient.ListTags(imageName)
 	if err != nil {
-		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("deployment get error: %v", err))
+		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("registry list tags error: %v", err))
 		return
 	}
 
 	sort.Sort(sort.Reverse(sort.StringSlice(tags.Tags)))
 
-	succeed(c, tags)
+	succeed(c, gin.H{"image_name": tags.Name, "tags": tags.Tags})
 }
