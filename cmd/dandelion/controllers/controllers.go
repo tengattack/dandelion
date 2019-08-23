@@ -87,7 +87,9 @@ func routerEngine() *gin.Engine {
 	r.GET("/manifest.json", servePublic)
 	r.GET("/index.html", servePublic)
 	r.GET("/a/*app_id", indexHandler)
+	r.GET("/dp/*deployment", indexHandler)
 	r.GET("/", indexHandler)
+	r.GET("/kube", indexHandler)
 
 	// health
 	r.GET("/health", appHealthHandler)
@@ -125,7 +127,7 @@ func routerEngine() *gin.Engine {
 	return r
 }
 
-//go:generate go-bindata -prefix "../../web/public" -pkg main -o bindata.go ../../web/public/...
+//go:generate go-bindata -prefix "../../../web/public" -pkg controllers -o bindata.go ../../../web/public/...
 func servePublic(c *gin.Context) {
 	path := c.Request.URL.Path
 
