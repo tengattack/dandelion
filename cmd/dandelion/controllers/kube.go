@@ -7,8 +7,11 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/cmd/dandelion/registry"
 	"github.com/tengattack/dandelion/log"
@@ -31,6 +34,14 @@ type Deployment struct {
 	Revision  int64  `json:"revision"`
 }
 
+// DeploymentEvent for deployment status
+type DeploymentEvent struct {
+	Name   string                              `json:"name"`
+	Action string                              `json:"action"`
+	Event  string                              `json:"event"`
+	Status *extensionsv1beta1.DeploymentStatus `json:"status"`
+}
+
 // consts
 const (
 	RevisionAnnotation    = "deployment.kubernetes.io/revision"
@@ -41,6 +52,8 @@ var (
 	clientset         *kubernetes.Clientset
 	deploymentsClient typedappsv1.DeploymentInterface
 	registryClient    *registry.Client
+	eventsConns       map[string][]*websocket.Conn
+	eventsConnMutex   *sync.Mutex
 
 	errDeploymentIsNotManaged = errors.New("deployment is not managed by dandelion")
 )
@@ -63,6 +76,8 @@ func initKubeClient() error {
 
 	deploymentsClient = clientset.AppsV1().Deployments(config.Conf.Kubernetes.Namespace)
 	registryClient = registry.NewClient(&config.Conf.Registry)
+	eventsConnMutex = new(sync.Mutex)
+	eventsConns = make(map[string][]*websocket.Conn)
 	return nil
 }
 
@@ -156,7 +171,8 @@ func kubeSetVersionTagHandler(c *gin.Context) {
 		return
 	}
 
-	// TODO: trigger events
+	// trigger events
+	triggerDeploymentEvent(deployment, "setversiontag")
 
 	succeed(c, gin.H{"deployment": getDeployment(dp), "ok": 1})
 }
@@ -193,7 +209,8 @@ func kubeRollbackHandler(c *gin.Context) {
 		return
 	}
 
-	// TODO: trigger events
+	// trigger events
+	triggerDeploymentEvent(deployment, "rollback")
 
 	var d *Deployment
 	dpNew, err := deploymentsClient.Get(deployment, metav1.GetOptions{})
@@ -232,4 +249,116 @@ func kubeListTagsHandler(c *gin.Context) {
 	sort.Sort(sort.Reverse(sort.StringSlice(tags.Tags)))
 
 	succeed(c, gin.H{"image_name": tags.Name, "tags": tags.Tags})
+}
+
+func startNewConn(deployment string, conn *websocket.Conn) {
+	eventsConnMutex.Lock()
+	defer eventsConnMutex.Unlock()
+
+	conns, ok := eventsConns[deployment]
+	if !ok {
+		conns = make([]*websocket.Conn, 0, 5)
+	}
+	eventsConns[deployment] = append(conns, conn)
+}
+
+func endConn(deployment string, conn *websocket.Conn) {
+	eventsConnMutex.Lock()
+	defer eventsConnMutex.Unlock()
+
+	conns, ok := eventsConns[deployment]
+	if ok {
+		for i := 0; i < len(conns); i++ {
+			if conns[i] == conn {
+				// order is not important
+				conns[i] = conns[len(conns)-1]
+				eventsConns[deployment] = conns[:len(conns)-1]
+				log.LogAccess.Debugf("events connections %s remove index %d", deployment, i)
+				break
+			}
+		}
+	}
+}
+
+func publishEventTo(deployment string, event *DeploymentEvent) {
+	eventsConnMutex.Lock()
+	defer eventsConnMutex.Unlock()
+
+	conns, ok := eventsConns[deployment]
+	if ok {
+		for _, conn := range conns {
+			go conn.WriteJSON(event)
+		}
+	}
+}
+
+// https://github.com/kubernetes/kubernetes/blob/74bcefc8b2bf88a2f5816336999b524cc48cf6c0/pkg/controller/deployment/util/deployment_util.go#L745
+func isDeploymentComplete(deployment *extensionsv1beta1.Deployment, newStatus *extensionsv1beta1.DeploymentStatus) bool {
+	return newStatus.UpdatedReplicas == *(deployment.Spec.Replicas) &&
+		newStatus.Replicas == *(deployment.Spec.Replicas) &&
+		newStatus.AvailableReplicas == *(deployment.Spec.Replicas) &&
+		newStatus.ObservedGeneration >= deployment.Generation
+}
+
+func triggerDeploymentEvent(deployment, action string) {
+	go func() {
+		client := clientset.ExtensionsV1beta1().Deployments(config.Conf.Kubernetes.Namespace)
+		timeoutCh := time.After(60 * time.Second)
+		for {
+			timeout := false
+			select {
+			case <-time.After(2 * time.Second):
+			case <-timeoutCh:
+				timeout = true
+			}
+
+			dp, err := client.Get(deployment, metav1.GetOptions{})
+			if err != nil {
+				log.LogError.Errorf("%s deployment get status error: %v", action, err)
+				break
+			}
+			event := &DeploymentEvent{Name: deployment, Action: action, Event: "processing", Status: &dp.Status}
+			if isDeploymentComplete(dp, &dp.Status) {
+				event.Event = "complete"
+				log.LogAccess.Infof("%s deployment %s completed", action, deployment)
+			} else if timeout {
+				event.Event = "timeout"
+				log.LogAccess.Warnf("%s deployment %s timeout", action, deployment)
+			}
+			publishEventTo(deployment, event)
+
+			if event.Event != "processing" {
+				break
+			}
+		}
+	}()
+}
+
+func kubeEventsHandler(c *gin.Context) {
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.LogError.Errorf("Failed to set websocket upgrade: %+v", err)
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer conn.Close()
+
+	deployment := c.Param("deployment")
+
+	startNewConn(deployment, conn)
+	defer endConn(deployment, conn)
+	defer conn.Close()
+
+	for {
+		t, _, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+				log.LogError.Errorf("Unexpected close error: %v", err)
+			}
+			break
+		}
+		if t == websocket.TextMessage || t == websocket.BinaryMessage {
+			// TODO: ping pong
+		}
+	}
 }

@@ -9,6 +9,8 @@ import { kubeDeploymentsSelector } from '../selectors'
 import { Loading } from '../components'
 import { NotFound } from './notfound'
 
+const MAX_MESSAGE_SIZE = 50
+
 @connect(
   createSelector(
     kubeDeploymentsSelector,
@@ -27,12 +29,64 @@ export class Deployment extends Component {
       setUpdate: false,
       setRollback: false,
       versionTag: '',
+      messages: [],
     }
   }
   componentWillMount() {
+    const { name } = this.props.match.params
     if (!this.props.deployments) {
       this.props.kubeListDeployments()
     }
+    // connect websocket
+    const u = new URL(window.PUBLIC_URL)
+    let scheme = 'ws:'
+    if (u.protocol === 'https:') {
+      scheme = 'wss:'
+    }
+    this.conn = new WebSocket(scheme + '//' + u.host + u.pathname + 'events/kube/' + name)
+    this.conn.onopen = this.onConnOpen
+    this.conn.onmessage = this.onConnMessage
+    this.conn.onclose = this.onConnClose
+    this.conn.onerror = this.onConnError
+  }
+  componentWillUnmount() {
+    if (this.conn) {
+      this.conn.close()
+    }
+  }
+  addMessage(msg) {
+    let { messages } = this.state
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage.msg === msg) {
+        // PASS
+      } else {
+        messages = [ ...messages, { id: lastMessage.id + 1, msg } ]
+        if (messages.length > MAX_MESSAGE_SIZE) {
+          messages = messages.slice(messages.length - MAX_MESSAGE_SIZE)
+        }
+        this.setState({ messages })
+      }
+    } else {
+      // first message
+      this.setState({ messages: [ { id: 1, msg } ] })
+    }
+  }
+  onConnOpen = () => {
+    this.addMessage('connected')
+  }
+  onConnMessage = (event) => {
+    const ev = JSON.parse(event.data)
+    const msg = `[${ev.action}] ${ev.event} replicas: ${ev.status.updatedReplicas}/${ev.status.readyReplicas}/${ev.status.replicas}`
+    this.addMessage(msg)
+  }
+  onConnClose = () => {
+    this.addMessage('connection closed')
+    this.conn = null
+  }
+  onConnError = () => {
+    this.addMessage('connection error')
+    //this.conn = null
   }
   onUpdateClick = () => {
     const { name } = this.props.match.params
@@ -85,7 +139,7 @@ export class Deployment extends Component {
     if (!dp) {
       return <NotFound />
     }
-    const { setUpdate, setRollback } = this.state
+    const { setUpdate, setRollback, messages } = this.state
     return (
       <div id="Deployment">
         <h2>{ dp.name }</h2>
@@ -124,6 +178,16 @@ export class Deployment extends Component {
             </div>
           ) : undefined
         }
+        <div className="message-list">
+          <h4>Logs:</h4>
+        {
+          messages.map((m) => (
+            <div key={m.id} className="message">
+              { m.msg }
+            </div>
+          ))
+        }
+        </div>
       </div>
     )
   }

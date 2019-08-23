@@ -317,7 +317,11 @@ if (DEBUG) {
         index: '/assets/index.html',
       },
       proxy: {
-        '/api': 'http://localhost:9012'
+        '/api': 'http://localhost:9012',
+        '/events': {
+          target: 'http://localhost:9012/',
+          ws: true,
+        },
       },
     },
   }
