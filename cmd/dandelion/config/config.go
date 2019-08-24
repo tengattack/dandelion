@@ -17,6 +17,7 @@ type Config struct {
 	Kafka      SectionKafka      `yaml:"kafka"`
 	Kubernetes SectionKubernetes `yaml:"kubernetes"`
 	Registry   SectionRegistry   `yaml:"registry"`
+	Webhook    SectionWebhook    `yaml:"webhook"`
 }
 
 // SectionCore is sub section of config.
@@ -62,6 +63,11 @@ type SectionRegistry struct {
 	Password string `yaml:"password"`
 }
 
+// SectionWebhook is sub section of config.
+type SectionWebhook struct {
+	URL string `yaml:"url"`
+}
+
 // BuildDefaultConf is default config setting.
 func BuildDefaultConf() Config {
 	var conf Config
@@ -100,6 +106,9 @@ func BuildDefaultConf() Config {
 
 	// Registry
 	conf.Registry.Endpoint = ""
+
+	// Webhook
+	conf.Webhook.URL = ""
 
 	return conf
 }

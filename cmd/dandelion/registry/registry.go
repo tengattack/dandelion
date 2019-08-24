@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 )
 
@@ -23,7 +24,7 @@ type ListTagsResponse struct {
 	Tags []string `json:"tags"`
 }
 
-// NewClient returns new registry client
+// NewClient creates a new registry client
 func NewClient(conf *config.SectionRegistry) *Client {
 	c := new(Client)
 	c.endpoint = conf.Endpoint
@@ -41,6 +42,7 @@ func (c *Client) ListTags(catalog string) (*ListTagsResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	client.InitHTTPRequest(req, false)
 	if c.username != "" && c.password != "" {
 		req.SetBasicAuth(c.username, c.password)
 	}

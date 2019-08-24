@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/cmd/dandelion/registry"
+	"github.com/tengattack/dandelion/cmd/dandelion/webhook"
 	"github.com/tengattack/dandelion/log"
 	appsv1 "k8s.io/api/apps/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -74,6 +75,7 @@ var (
 	clientset         *kubernetes.Clientset
 	deploymentsClient typedappsv1.DeploymentInterface
 	registryClient    *registry.Client
+	webhookClient     *webhook.Client
 	eventsConns       map[string][]*websocket.Conn
 	eventsConnMutex   *sync.Mutex
 
@@ -98,6 +100,7 @@ func initKubeClient() error {
 
 	deploymentsClient = clientset.AppsV1().Deployments(config.Conf.Kubernetes.Namespace)
 	registryClient = registry.NewClient(&config.Conf.Registry)
+	webhookClient = webhook.NewClient(&config.Conf.Webhook)
 	eventsConnMutex = new(sync.Mutex)
 	eventsConns = make(map[string][]*websocket.Conn)
 	return nil
@@ -312,6 +315,13 @@ func publishEventTo(deployment string, event *DeploymentEvent) {
 			go conn.WriteJSON(event)
 		}
 	}
+
+	go func() {
+		err := webhookClient.Send(event)
+		if err != nil {
+			log.LogError.Errorf("webhook send deployment %s event error: %v", deployment, err)
+		}
+	}()
 }
 
 // https://github.com/kubernetes/kubernetes/blob/74bcefc8b2bf88a2f5816336999b524cc48cf6c0/pkg/controller/deployment/util/deployment_util.go#L745

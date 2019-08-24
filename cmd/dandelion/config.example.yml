@@ -44,3 +44,7 @@ registry:
   endpoint: 'http://127.0.0.1:5000'
   #username:
   #password:
+
+# send events to webhook
+webhook:
+  url: '' # default: '' (disabled)
