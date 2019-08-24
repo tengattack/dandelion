@@ -63,15 +63,11 @@ export class Deployment extends Component {
     let { messages } = this.state
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
-      if (lastMessage.msg === msg) {
-        // PASS
-      } else {
-        messages = [ ...messages, { id: lastMessage.id + 1, msg } ]
-        if (messages.length > MAX_MESSAGE_SIZE) {
-          messages = messages.slice(messages.length - MAX_MESSAGE_SIZE)
-        }
-        this.setState({ messages })
+      messages = [ ...messages, { id: lastMessage.id + 1, msg } ]
+      if (messages.length > MAX_MESSAGE_SIZE) {
+        messages = messages.slice(messages.length - MAX_MESSAGE_SIZE)
       }
+      this.setState({ messages })
     } else {
       // first message
       this.setState({ messages: [ { id: 1, msg } ] })

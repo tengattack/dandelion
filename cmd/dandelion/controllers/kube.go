@@ -42,6 +42,28 @@ type DeploymentEvent struct {
 	Status *extensionsv1beta1.DeploymentStatus `json:"status"`
 }
 
+// Equal checks whether the event is same
+func (e *DeploymentEvent) Equal(event *DeploymentEvent) bool {
+	ok := false
+	if event != nil {
+		ok = e.Name == event.Name &&
+			e.Action == event.Action &&
+			e.Event == event.Event
+		if ok {
+			if e.Status == nil && event.Status == nil {
+				// no status
+				// PASS
+			} else if e.Status != nil && event.Status != nil {
+				ok = e.Status.String() == event.Status.String()
+			} else {
+				// one of event has no status
+				ok = false
+			}
+		}
+	}
+	return ok
+}
+
 // consts
 const (
 	RevisionAnnotation    = "deployment.kubernetes.io/revision"
@@ -304,6 +326,7 @@ func triggerDeploymentEvent(deployment, action string) {
 	go func() {
 		client := clientset.ExtensionsV1beta1().Deployments(config.Conf.Kubernetes.Namespace)
 		timeoutCh := time.After(60 * time.Second)
+		var lastEvent *DeploymentEvent
 		for {
 			timeout := false
 			select {
@@ -325,7 +348,10 @@ func triggerDeploymentEvent(deployment, action string) {
 				event.Event = "timeout"
 				log.LogAccess.Warnf("%s deployment %s timeout", action, deployment)
 			}
-			publishEventTo(deployment, event)
+			if !event.Equal(lastEvent) {
+				publishEventTo(deployment, event)
+				lastEvent = event
+			}
 
 			if event.Event != "processing" {
 				break
