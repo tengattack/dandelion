@@ -334,6 +334,10 @@ func triggerDeploymentEvent(deployment, action string) {
 	}()
 }
 
+const (
+	heartbeat string = "❤️"
+)
+
 func kubeEventsHandler(c *gin.Context) {
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -350,7 +354,7 @@ func kubeEventsHandler(c *gin.Context) {
 	defer conn.Close()
 
 	for {
-		t, _, err := conn.ReadMessage()
+		t, msg, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
 				log.LogError.Errorf("Unexpected close error: %v", err)
@@ -358,7 +362,11 @@ func kubeEventsHandler(c *gin.Context) {
 			break
 		}
 		if t == websocket.TextMessage || t == websocket.BinaryMessage {
-			// TODO: ping pong
+			if heartbeat == string(msg) {
+				// heartbeat
+				_ = conn.WriteMessage(websocket.TextMessage, []byte(heartbeat))
+				continue
+			}
 		}
 	}
 }

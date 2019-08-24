@@ -9,6 +9,7 @@ import { kubeDeploymentsSelector } from '../selectors'
 import { Loading } from '../components'
 import { NotFound } from './notfound'
 
+const HEARTBEAT_CODE = '❤️'
 const MAX_MESSAGE_SIZE = 50
 
 @connect(
@@ -53,6 +54,10 @@ export class Deployment extends Component {
     if (this.conn) {
       this.conn.close()
     }
+    if (this.t) {
+      clearInterval(this.t)
+      this.t = null
+    }
   }
   addMessage(msg) {
     let { messages } = this.state
@@ -72,8 +77,12 @@ export class Deployment extends Component {
       this.setState({ messages: [ { id: 1, msg } ] })
     }
   }
+  onConnHeartbeat = () => {
+    this.conn.send(HEARTBEAT_CODE)
+  }
   onConnOpen = () => {
     this.addMessage('connected')
+    this.t = setInterval(this.onConnHeartbeat, 10000)
   }
   onConnMessage = (event) => {
     const ev = JSON.parse(event.data)
@@ -83,6 +92,10 @@ export class Deployment extends Component {
   onConnClose = () => {
     this.addMessage('connection closed')
     this.conn = null
+    if (this.t) {
+      clearInterval(this.t)
+      this.t = null
+    }
   }
   onConnError = () => {
     this.addMessage('connection error')
@@ -118,6 +131,9 @@ export class Deployment extends Component {
     const { name } = this.props.match.params
     this.props.kubeRollback(name)
     this.setState({ setRollback: false })
+  }
+  onCancelClick = () => {
+    this.setState({ setUpdate: false, setRollback: false })
   }
   render() {
     const { name } = this.props.match.params
@@ -164,10 +180,13 @@ export class Deployment extends Component {
                 name="version_tag"
                 className="tags-select"
                 onChange={this.onChange}
-                noOptionsMessage={"Loading..."}
-                options={dp.image_tags ? dp.image_tags.map((tag) => ({ value: tag, label: tag })) : []}
+                options={[{
+                  label: dp.image_name,
+                  options: dp.image_tags ? dp.image_tags.map((tag) => ({ value: tag, label: tag })) : [],
+                }]}
               />
               <button className="btn btn-large btn-red update-btn" onClick={this.onUpdateConfirmClick}>Update</button>
+              <button className="btn btn-large cancel-btn" onClick={this.onCancelClick}>Cancel</button>
             </div>
           ) : undefined
         }
@@ -175,6 +194,7 @@ export class Deployment extends Component {
           setRollback ? (
             <div className="actions set-rollback">
               <button className="btn btn-large btn-red rollback-btn" onClick={this.onRollbackConfirmClick}>Confirm Rollback</button>
+              <button className="btn btn-large cancel-btn" onClick={this.onCancelClick}>Cancel</button>
             </div>
           ) : undefined
         }
