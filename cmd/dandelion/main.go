@@ -6,13 +6,20 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/log"
 	"github.com/tengattack/dandelion/mq"
 	"github.com/tengattack/dandelion/repository"
 )
 
+var (
+	// Version control for dandelion
+	Version = "0.0.1-dev"
+)
+
 func main() {
+	client.SetVersion(Version)
 	var defaultConfigPath string
 	if runtime.GOOS == "windows" {
 		defaultConfigPath = "config.yml"

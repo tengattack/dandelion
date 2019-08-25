@@ -32,6 +32,7 @@ func (c *Client) Send(v interface{}) error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
 	client.InitHTTPRequest(req, false)
 
 	res, err := c.httpClient.Do(req)

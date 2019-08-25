@@ -19,9 +19,12 @@ var (
 	Conf config.Config
 	// Client is the dandelion client instance
 	Client *client.DandelionClient
+	// Version control for dandelion-seed
+	Version = "0.0.1-dev"
 )
 
 func main() {
+	client.SetVersion(Version)
 	var defaultConfigPath string
 	if runtime.GOOS == "windows" {
 		defaultConfigPath = "config.yml"

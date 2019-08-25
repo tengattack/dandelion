@@ -9,10 +9,15 @@ import (
 	"github.com/tengattack/dandelion/log"
 )
 
-const (
+var (
 	// UserAgent for http request
 	UserAgent = "dandelion-cli/0.0.2"
 )
+
+// SetVersion updates client user-agent
+func SetVersion(version string) {
+	UserAgent = "dandelion-cli/" + version
+}
 
 // InitHTTPRequest helps to set necessary headers
 func InitHTTPRequest(req *http.Request, isJSONResponse bool) {
