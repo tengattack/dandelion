@@ -15,6 +15,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
 	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
@@ -38,24 +39,30 @@ func isDirExists(path string) bool {
 
 // InitRepository init or open the repository
 func InitRepository(repoPath, remoteURL string) (*Repository, error) {
-	homePath := os.Getenv("HOME")
-	keyPath := path.Join(homePath, ".ssh/id_rsa")
-	log.LogAccess.Debugf("ssh key path: %s", keyPath)
+	var auth transport.AuthMethod
+	if strings.HasPrefix(remoteURL, "git@") {
+		homePath := os.Getenv("HOME")
+		keyPath := path.Join(homePath, ".ssh/id_rsa")
+		log.LogAccess.Debugf("ssh key path: %s", keyPath)
 
-	sshKey, err := ioutil.ReadFile(keyPath)
-	signer, err := ssh.ParsePrivateKey([]byte(sshKey))
-	auth := &gitssh.PublicKeys{
-		User:   "git",
-		Signer: signer,
-		HostKeyCallbackHelper: gitssh.HostKeyCallbackHelper{
-			HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-				log.LogAccess.Infof("git auth, host: %s (%s) pubkey: %s:%x", hostname, remote, key.Type(), key.Marshal())
-				return nil
+		sshKey, err := ioutil.ReadFile(keyPath)
+		if err != nil {
+			return nil, err
+		}
+		signer, err := ssh.ParsePrivateKey([]byte(sshKey))
+		if err != nil {
+			return nil, err
+		}
+		auth = &gitssh.PublicKeys{
+			User:   "git",
+			Signer: signer,
+			HostKeyCallbackHelper: gitssh.HostKeyCallbackHelper{
+				HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+					log.LogAccess.Infof("git auth, host: %s (%s) pubkey: %s:%x", hostname, remote, key.Type(), key.Marshal())
+					return nil
+				},
 			},
-		},
-	}
-	if err != nil {
-		return nil, err
+		}
 	}
 	pullOptions = &git.PullOptions{
 		RemoteName: "origin",
@@ -76,6 +83,7 @@ func InitRepository(repoPath, remoteURL string) (*Repository, error) {
 	}
 
 	var repo *git.Repository
+	var err error
 	newRepo := false
 	if !isDirExists(repoPath) {
 		repo, err = git.PlainInit(repoPath, false)
