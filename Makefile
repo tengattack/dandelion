@@ -1,5 +1,5 @@
 NAME=dandelion
-VERSION=0.2.1
+VERSION=0.2.2
 REGISTRY_PREFIX=$(if $(REGISTRY),$(addsuffix /, $(REGISTRY)))
 
 .PHONY: build publish web
