@@ -350,7 +350,12 @@ func triggerDeploymentEvent(deployment, action string) {
 				log.LogError.Errorf("%s deployment get status error: %v", action, err)
 				break
 			}
-			event := &DeploymentEvent{Name: deployment, Action: action, Event: "processing", Status: &dp.Status}
+			event := &DeploymentEvent{
+				Name:   deployment,
+				Action: action,
+				Event:  "processing",
+				Status: &dp.Status,
+			}
 			if isDeploymentComplete(dp, &dp.Status) {
 				event.Event = "complete"
 				log.LogAccess.Infof("%s deployment %s completed", action, deployment)

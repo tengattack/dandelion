@@ -51,6 +51,16 @@ func InitLog(logConf *log.Config) error {
 	return nil
 }
 
+// Host returns current host
+func Host() string {
+	return conf.Agent.Host
+}
+
+// InstanceID returns current instance id
+func InstanceID() string {
+	return conf.Agent.InstanceID
+}
+
 // LogRequest record http request
 func LogRequest(uri string, method string, ip string, contentType string, agent string) {
 	var output string

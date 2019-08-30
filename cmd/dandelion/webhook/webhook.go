@@ -9,12 +9,25 @@ import (
 
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
+	"github.com/tengattack/dandelion/log"
 )
 
 // Client for send events to webhook
 type Client struct {
 	url        string
 	httpClient *http.Client
+}
+
+// EventMetadata for event
+type EventMetadata struct {
+	Host       string `json:"host"`
+	InstanceID string `json:"instance_id"`
+}
+
+// Event for webhook
+type Event struct {
+	Metadata EventMetadata `json:"metadata"`
+	Event    interface{}   `json:"event"`
 }
 
 // Send webhook events
@@ -24,7 +37,11 @@ func (c *Client) Send(v interface{}) error {
 		return nil
 	}
 
-	reqBody, err := json.Marshal(v)
+	e := Event{
+		Metadata: EventMetadata{Host: log.Host(), InstanceID: log.InstanceID()},
+		Event:    v,
+	}
+	reqBody, err := json.Marshal(e)
 	if err != nil {
 		return err
 	}
