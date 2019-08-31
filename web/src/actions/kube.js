@@ -84,3 +84,22 @@ export function kubeRollback(name) {
     }
   }
 }
+
+export const KUBE_RESTART_REQUEST = 'KUBE_RESTART_REQUEST'
+export const KUBE_RESTART_SUCCESS = 'KUBE_RESTART_SUCCESS'
+export const KUBE_RESTART_FAILURE = 'KUBE_RESTART_FAILURE'
+
+export function kubeRestart(name) {
+  return {
+    [RSAA]: {
+      method: 'POST',
+      endpoint: API_URL + '/kube/restart/' + name,
+      types: [
+        KUBE_RESTART_REQUEST,
+        { type: KUBE_RESTART_SUCCESS, payload: apiPayload, meta: { name } },
+        KUBE_RESTART_FAILURE
+      ],
+      credentials: 'include',
+    }
+  }
+}

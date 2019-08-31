@@ -123,6 +123,7 @@ func routerEngine() *gin.Engine {
 	g.GET("/kube/listtags/:deployment", kubeListTagsHandler)
 	g.POST("/kube/setversiontag/:deployment", kubeSetVersionTagHandler)
 	g.POST("/kube/rollback/:deployment", kubeRollbackHandler)
+	g.POST("/kube/restart/:deployment", kubeRestartHandler)
 
 	return r
 }

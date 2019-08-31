@@ -3,7 +3,7 @@ import { connect } from 'react-redux'
 import { createSelector } from 'reselect'
 import Select from 'react-select'
 
-import { kubeListDeployments, kubeListTags, kubeRollback, kubeSetTag } from '../actions'
+import { kubeListDeployments, kubeListTags, kubeRollback, kubeSetTag, kubeRestart } from '../actions'
 import { kubeDeploymentsSelector } from '../selectors'
 
 import { Loading } from '../components'
@@ -22,6 +22,7 @@ const MAX_MESSAGE_SIZE = 50
     kubeListTags,
     kubeRollback,
     kubeSetTag,
+    kubeRestart,
   })
 export class Deployment extends Component {
   constructor(props) {
@@ -29,6 +30,7 @@ export class Deployment extends Component {
     this.state = {
       setUpdate: false,
       setRollback: false,
+      setRestart: false,
       versionTag: '',
       messages: [],
     }
@@ -81,6 +83,9 @@ export class Deployment extends Component {
     this.t = setInterval(this.onConnHeartbeat, 10000)
   }
   onConnMessage = (event) => {
+    if (event.data === HEARTBEAT_CODE) {
+      return
+    }
     const ev = JSON.parse(event.data)
     const msg = `[${ev.action}] ${ev.event} replicas: ${ev.status.updatedReplicas}/${ev.status.readyReplicas}/${ev.status.replicas}`
     this.addMessage(msg)
@@ -105,6 +110,9 @@ export class Deployment extends Component {
   onRollbackClick = () => {
     this.setState({ setRollback: true })
   }
+  onRestartClick = () => {
+    this.setState({ setRestart: true })
+  }
   onChange = (value, { action }) => {
     switch (action) {
     case 'select-option':
@@ -128,8 +136,13 @@ export class Deployment extends Component {
     this.props.kubeRollback(name)
     this.setState({ setRollback: false })
   }
+  onRestartConfirmClick = () => {
+    const { name } = this.props.match.params
+    this.props.kubeRestart(name)
+    this.setState({ setRestart: false })
+  }
   onCancelClick = () => {
-    this.setState({ setUpdate: false, setRollback: false })
+    this.setState({ setUpdate: false, setRollback: false, setRestart: false })
   }
   render() {
     const { name } = this.props.match.params
@@ -151,7 +164,7 @@ export class Deployment extends Component {
     if (!dp) {
       return <NotFound />
     }
-    const { setUpdate, setRollback, messages } = this.state
+    const { setUpdate, setRollback, setRestart, messages } = this.state
     return (
       <div id="Deployment">
         <h2>{ dp.name }</h2>
@@ -160,10 +173,11 @@ export class Deployment extends Component {
         <p>Revision: { dp.revision }</p>
         <br />
         {
-          !setUpdate && !setRollback ? (
+          !setUpdate && !setRollback && !setRestart ? (
             <div className="actions">
               <button className="btn btn-large btn-red update-btn" onClick={this.onUpdateClick}>Update</button>
               <button className="btn btn-large rollback-btn" onClick={this.onRollbackClick}>Rollback</button>
+              <button className="btn btn-large restart-btn" onClick={this.onRestartClick}>Restart</button>
             </div>
           ) : undefined
         }
@@ -190,6 +204,14 @@ export class Deployment extends Component {
           setRollback ? (
             <div className="actions set-rollback">
               <button className="btn btn-large btn-red rollback-btn" onClick={this.onRollbackConfirmClick}>Confirm Rollback</button>
+              <button className="btn btn-large cancel-btn" onClick={this.onCancelClick}>Cancel</button>
+            </div>
+          ) : undefined
+        }
+        {
+          setRestart ? (
+            <div className="actions set-restart">
+              <button className="btn btn-large btn-red restart-btn" onClick={this.onRestartConfirmClick}>Confirm Restart</button>
               <button className="btn btn-large cancel-btn" onClick={this.onCancelClick}>Cancel</button>
             </div>
           ) : undefined

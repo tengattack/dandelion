@@ -17,6 +17,7 @@ import (
 	"github.com/tengattack/dandelion/cmd/dandelion/webhook"
 	"github.com/tengattack/dandelion/log"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -69,6 +70,7 @@ func (e *DeploymentEvent) Equal(event *DeploymentEvent) bool {
 const (
 	RevisionAnnotation    = "deployment.kubernetes.io/revision"
 	DandelionManagedLabel = "dandelion-managed"
+	LastRestartEnv        = "LAST_RESTART"
 )
 
 var (
@@ -247,6 +249,61 @@ func kubeRollbackHandler(c *gin.Context) {
 	}
 
 	succeed(c, gin.H{"deployment": d, "ok": 1})
+}
+
+func kubeRestartHandler(c *gin.Context) {
+	deployment := c.Param("deployment")
+
+	// WORKAROUND: This is a workaround for `kubectl rollout restart {deployment}`
+	// in old version kubernetes cluster.
+	// https://github.com/kubernetes/kubernetes/issues/13488
+
+	var dp *appsv1.Deployment
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// Retrieve the latest version of Deployment before attempting update
+		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+		result, getErr := deploymentsClient.Get(deployment, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+		// check permissions
+		if !isManaged(result) {
+			return errDeploymentIsNotManaged
+		}
+
+		// add or update env name
+		found := false
+		lastRestart := time.Now().UTC().Format(time.RFC3339)
+		for i, env := range result.Spec.Template.Spec.Containers[0].Env {
+			if env.Name == LastRestartEnv {
+				found = true
+				result.Spec.Template.Spec.Containers[0].Env[i].Value = lastRestart
+				break
+			}
+		}
+		if !found {
+			result.Spec.Template.Spec.Containers[0].Env = append(
+				result.Spec.Template.Spec.Containers[0].Env,
+				corev1.EnvVar{Name: LastRestartEnv, Value: lastRestart},
+			)
+		}
+		var updateErr error
+		dp, updateErr = deploymentsClient.Update(result)
+		return updateErr
+	})
+	if retryErr == errDeploymentIsNotManaged {
+		abortWithError(c, http.StatusForbidden, retryErr.Error())
+		return
+	}
+	if retryErr != nil {
+		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("deployment restart error: %v", retryErr))
+		return
+	}
+
+	// trigger events
+	triggerDeploymentEvent(deployment, "restart")
+
+	succeed(c, gin.H{"deployment": getDeployment(dp), "ok": 1})
 }
 
 func kubeListTagsHandler(c *gin.Context) {

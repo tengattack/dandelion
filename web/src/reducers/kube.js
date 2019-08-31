@@ -4,6 +4,7 @@ import {
   KUBE_LIST_TAGS_SUCCESS,
   KUBE_SET_TAG_SUCCESS,
   KUBE_ROLLBACK_SUCCESS,
+  KUBE_RESTART_SUCCESS,
 } from '../actions'
 
 const initialState = {
@@ -46,7 +47,8 @@ export function kube(state = initialState, action) {
     }
   }
   case KUBE_SET_TAG_SUCCESS:
-  case KUBE_ROLLBACK_SUCCESS: {
+  case KUBE_ROLLBACK_SUCCESS:
+  case KUBE_RESTART_SUCCESS: {
     const { deployments } = state
     const i = findDeploymentIndex(deployments, action.meta.name)
     if (i < 0) {
