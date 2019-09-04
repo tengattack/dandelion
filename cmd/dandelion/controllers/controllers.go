@@ -100,6 +100,7 @@ func routerEngine() *gin.Engine {
 	// websocket
 	r.GET("/connect/push", wsPushHandler)
 	r.GET("/events/kube/:deployment", kubeEventsHandler)
+	r.POST("/webhook/kube/validate", webhookKubeValidateHandler)
 
 	g := r.Group("/api/v1")
 

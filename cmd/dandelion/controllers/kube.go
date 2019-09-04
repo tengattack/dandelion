@@ -16,6 +16,7 @@ import (
 	"github.com/tengattack/dandelion/cmd/dandelion/registry"
 	"github.com/tengattack/dandelion/cmd/dandelion/webhook"
 	"github.com/tengattack/dandelion/log"
+	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -331,6 +332,30 @@ func kubeListTagsHandler(c *gin.Context) {
 	sort.Sort(sort.Reverse(sort.StringSlice(tags.Tags)))
 
 	succeed(c, gin.H{"image_name": tags.Name, "tags": tags.Tags})
+}
+
+func webhookKubeValidateHandler(c *gin.Context) {
+	var review admissionv1beta1.AdmissionReview
+	err := c.BindJSON(&review)
+	if err != nil || review.Request == nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	resp := &admissionv1beta1.AdmissionResponse{
+		UID:     review.Request.UID,
+		Allowed: false,
+		Result: &metav1.Status{
+			Status:  "Failure",
+			Message: "always deny",
+			Reason:  "always deny",
+			Code:    402,
+		},
+	}
+
+	review.Request = nil
+	review.Response = resp
+	c.JSON(http.StatusOK, &review)
 }
 
 func startNewConn(deployment string, conn *websocket.Conn) {
