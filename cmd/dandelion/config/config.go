@@ -25,6 +25,10 @@ type SectionCore struct {
 	Enabled        bool   `yaml:"enabled"`
 	Address        string `yaml:"address"`
 	Port           int    `yaml:"port"`
+	SSL            bool   `yaml:"ssl"`
+	SSLPort        int    `yaml:"ssl_port"`
+	CertPath       string `yaml:"cert_path"`
+	CertKeyPath    string `yaml:"cert_key_path"`
 	Mode           string `yaml:"mode"`
 	PublicURL      string `yaml:"public_url"`
 	RepositoryPath string `yaml:"repository_path"`
@@ -76,6 +80,7 @@ func BuildDefaultConf() Config {
 	conf.Core.Enabled = true
 	conf.Core.Address = ""
 	conf.Core.Port = 9012
+	conf.Core.SSL = false
 	conf.Core.Mode = "release"
 	conf.Core.PublicURL = ""
 	conf.Core.RepositoryPath = ""

@@ -2,6 +2,10 @@ core:
   enabled: true
   address: '' # ip address to bind (default: any)
   port: 9012
+  ssl: false
+  #ssl_port: 9013
+  #cert_path: /path/to/ssl_cert
+  #cert_key_path: /path/to/ssl_cert_key
   mode: 'release'
   public_url: '' # public url for web browser request, need last slash
   repository_path: /tmp/gittest
