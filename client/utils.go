@@ -5,13 +5,12 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/tengattack/dandelion/log"
 )
 
 var (
 	// UserAgent for http request
-	UserAgent = "dandelion-cli/0.0.2"
+	UserAgent    = "dandelion-cli/0.0.2"
+	clientLogger Logger
 )
 
 // SetVersion updates client user-agent
@@ -45,7 +44,7 @@ func DoHTTPRequest(req *http.Request, isJSONResponse bool, v interface{}) error 
 		return err
 	}
 
-	log.LogAccess.Debugf("HTTP %s\n%s", resp.Status, body)
+	clientLogger.Debugf("HTTP %s\n%s", resp.Status, body)
 
 	if isJSONResponse {
 		err = json.Unmarshal(body, &v)

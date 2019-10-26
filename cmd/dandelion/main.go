@@ -55,6 +55,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	client.SetLogger(log.GetClientLogger())
 
 	config.Repo, err = repository.InitRepository(conf.Core.RepositoryPath, conf.Core.RemoteURL)
 	if err != nil {

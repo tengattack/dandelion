@@ -61,6 +61,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	client.SetLogger(log.GetClientLogger())
 
 	Client, err = client.NewDandelionClient(Conf.Dandelion.URL)
 	if err != nil {

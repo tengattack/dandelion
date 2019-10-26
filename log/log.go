@@ -30,6 +30,22 @@ type LogReq struct {
 	Agent       string `json:"agent"`
 }
 
+// ClientLogger implements client.Logger by wrapping LogAccess & LogError
+type ClientLogger struct {
+}
+
+func (l *ClientLogger) Debugf(format string, args ...interface{}) {
+	LogAccess.Debugf(format, args...)
+}
+
+func (l *ClientLogger) Infof(format string, args ...interface{}) {
+	LogAccess.Infof(format, args...)
+}
+
+func (l *ClientLogger) Errorf(format string, args ...interface{}) {
+	LogError.Errorf(format, args...)
+}
+
 var conf *log.Config
 
 var (
@@ -59,6 +75,11 @@ func Host() string {
 // InstanceID returns current instance id
 func InstanceID() string {
 	return conf.Agent.InstanceID
+}
+
+// GetClientLogger returns a logger for client
+func GetClientLogger() *ClientLogger {
+	return &ClientLogger{}
 }
 
 // LogRequest record http request

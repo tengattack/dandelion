@@ -16,7 +16,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/tengattack/dandelion/app"
-	"github.com/tengattack/dandelion/log"
 )
 
 // DandelionClient client interfaces
@@ -100,11 +99,11 @@ func (c *DandelionClient) initWebSocket() error {
 			err := client.WriteJSON(message)
 			c.wsLock.Unlock()
 			if err != nil {
-				log.LogError.Errorf("websocket ping failed: %v", err)
+				clientLogger.Errorf("websocket ping failed: %v", err)
 				client2, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
 				if err == nil {
 					// reconnected
-					log.LogAccess.Debug("websocket reconnected")
+					clientLogger.Debugf("websocket reconnected")
 					client = client2
 					c.wsLock.Lock()
 					c.c = client2
@@ -128,7 +127,7 @@ func (c *DandelionClient) Match(clientConfig *app.ClientConfig) (*app.AppConfig,
 	u.Add("host", clientConfig.Host)
 	u.Add("instance_id", clientConfig.InstanceID)
 
-	log.LogAccess.Debugf("GET %s?%s", apiURI, u.Encode())
+	clientLogger.Debugf("GET %s?%s", apiURI, u.Encode())
 
 	req, err := http.NewRequest(http.MethodGet,
 		fmt.Sprintf("%s%s?%s", c.URL, apiURI, u.Encode()),
@@ -164,7 +163,7 @@ func (c *DandelionClient) Match(clientConfig *app.ClientConfig) (*app.AppConfig,
 func (c *DandelionClient) ListFiles(appID string, commitID string) ([]string, error) {
 	apiURI := APIPrefix + "/list/" + appID + "/tree/" + commitID
 
-	log.LogAccess.Debugf("GET %s", apiURI)
+	clientLogger.Debugf("GET %s", apiURI)
 
 	req, err := http.NewRequest(http.MethodGet,
 		fmt.Sprintf("%s%s", c.URL, apiURI),
@@ -200,7 +199,7 @@ func (c *DandelionClient) ListFiles(appID string, commitID string) ([]string, er
 func (c *DandelionClient) GetZipArchive(appID, commitID string) (*zip.Reader, error) {
 	apiURI := APIPrefix + "/archive/" + appID + "/" + commitID + ".zip"
 
-	log.LogAccess.Debugf("GET %s", apiURI)
+	clientLogger.Debugf("GET %s", apiURI)
 
 	req, err := http.NewRequest(http.MethodGet,
 		fmt.Sprintf("%s%s", c.URL, apiURI),
@@ -225,7 +224,7 @@ func (c *DandelionClient) GetZipArchive(appID, commitID string) (*zip.Reader, er
 		return nil, err
 	}
 
-	log.LogAccess.Debugf("HTTP %s", resp.Status)
+	clientLogger.Debugf("HTTP %s", resp.Status)
 
 	r := bytes.NewReader(body)
 	return zip.NewReader(r, r.Size())
@@ -235,7 +234,7 @@ func (c *DandelionClient) GetZipArchive(appID, commitID string) (*zip.Reader, er
 func (c *DandelionClient) Download(appID, commitID, remotePath, filePath string) error {
 	apiURI := APIPrefix + "/list/" + appID + "/tree/" + commitID + "/" + remotePath
 
-	log.LogAccess.Debugf("GET %s", apiURI)
+	clientLogger.Debugf("GET %s", apiURI)
 
 	req, err := http.NewRequest(http.MethodGet,
 		fmt.Sprintf("%s%s", c.URL, apiURI),
@@ -260,7 +259,7 @@ func (c *DandelionClient) Download(appID, commitID, remotePath, filePath string)
 		return err
 	}
 
-	log.LogAccess.Debugf("HTTP %s\n%s", resp.Status, body)
+	clientLogger.Debugf("HTTP %s\n%s", resp.Status, body)
 
 	if resp.StatusCode != 200 {
 		var resp DandelionResponse
@@ -307,7 +306,7 @@ func (c *DandelionClient) SetStatus(cfg *app.ClientConfig, status InstanceStatus
 	}
 	// use app_id as key, save last status
 	c.lastStatuses[cfg.ID] = payload
-	log.LogAccess.Debugf("set status: %v", message)
+	clientLogger.Debugf("set status: %v", message)
 
 	c.wsLock.Lock()
 	defer c.wsLock.Unlock()
