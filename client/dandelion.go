@@ -50,7 +50,7 @@ const (
 )
 
 // NewDandelionClient create new dandelion client instance
-func NewDandelionClient(serverURL string) (*DandelionClient, error) {
+func NewDandelionClient(serverURL string, syncOnly bool) (*DandelionClient, error) {
 	_, err := url.Parse(serverURL)
 	if err != nil {
 		return nil, err
@@ -59,9 +59,11 @@ func NewDandelionClient(serverURL string) (*DandelionClient, error) {
 		URL:          serverURL,
 		lastStatuses: make(map[int]map[string]interface{}),
 	}
-	err = c.initWebSocket()
-	if err != nil {
-		return nil, err
+	if !syncOnly {
+		err = c.initWebSocket()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return c, nil
 }
@@ -308,13 +310,21 @@ func (c *DandelionClient) SetStatus(cfg *app.ClientConfig, status InstanceStatus
 	c.lastStatuses[cfg.ID] = payload
 	clientLogger.Debugf("set status: %v", message)
 
+	if c.c == nil {
+		return nil
+	}
+
 	c.wsLock.Lock()
 	defer c.wsLock.Unlock()
-
 	return c.c.WriteJSON(message)
 }
 
 // Close connection to dandelion server
 func (c *DandelionClient) Close() error {
-	return c.c.Close()
+	if c.c == nil {
+		return nil
+	}
+	err := c.c.Close()
+	c.c = nil
+	return err
 }
