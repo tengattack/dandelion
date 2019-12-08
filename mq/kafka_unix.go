@@ -87,7 +87,10 @@ func NewConsumer(servers []string, topic, groupID string, sigchan chan os.Signal
 					log.LogAccess.Debug(e)
 				case kafka.Error:
 					log.LogError.Error(e)
-					run = false
+					if e.Code() == kafka.ErrAllBrokersDown {
+						// REVIEW: it will reconnect automatically?
+						// run = false
+					}
 				}
 			}
 		}

@@ -63,7 +63,7 @@ func main() {
 	}
 	client.SetLogger(log.GetClientLogger())
 
-	Client, err = client.NewDandelionClient(Conf.Dandelion.URL, syncOnly)
+	Client, err = client.NewDandelionClient(Conf.Dandelion.URL, *syncOnly)
 	if err != nil {
 		log.LogError.Errorf("dandelion init error: %v", err)
 		panic(err)
