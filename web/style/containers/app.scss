@@ -3,21 +3,25 @@
   .app-logo {
     float: left;
     height: 80px;
+    margin-right: 20px;
   }
   .app-header {
-    background-color: #222;
     height: 120px;
     line-height: 80px;
     padding: 20px;
+    background-color: #222;
     color: white;
     .app-title {
       float: left;
-      margin-left: 20px;
       font-size: 1.5em;
       color: $white;
     }
     .app-intro {
       font-size: large;
+    }
+    .s {
+      float: left;
+      margin: 0 10px;
     }
   }
 }
