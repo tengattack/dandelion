@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,12 +22,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 )
+
+// PatchStringValue specifies a patch operation for a string.
+type PatchStringValue struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value"`
+}
 
 // Deployment for kube deployment
 type Deployment struct {
@@ -332,6 +341,72 @@ func kubeListTagsHandler(c *gin.Context) {
 	sort.Sort(sort.Reverse(sort.StringSlice(tags.Tags)))
 
 	succeed(c, gin.H{"image_name": tags.Name, "tags": tags.Tags})
+}
+
+func kubePatchHandler(c *gin.Context) {
+	nodesClient := clientset.CoreV1().Nodes()
+
+	var req struct {
+		Type         string          `json:"type"`
+		ResourceType string          `json:"resource_type"`
+		ResourceName string          `json:"resource_name"`
+		Payload      json.RawMessage `json:"payload"`
+	}
+	err := c.BindJSON(&req)
+	if err != nil {
+		abortWithError(c, http.StatusBadRequest, "params error")
+		return
+	}
+	if req.Type != "patch" && req.Type != "label" {
+		abortWithError(c, http.StatusBadRequest, "params error: unsupport type")
+		return
+	}
+	if req.ResourceType != "node" {
+		abortWithError(c, http.StatusBadRequest, "params error: unsupport resource type")
+		return
+	}
+
+	node, err := nodesClient.Get(req.ResourceName, metav1.GetOptions{})
+	if err != nil {
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if node == nil {
+		abortWithError(c, http.StatusNotFound, "specified resource not found")
+		return
+	}
+
+	var newNode *corev1.Node
+	if req.Type == "patch" {
+		newNode, err = nodesClient.Patch(req.ResourceName, types.StrategicMergePatchType, req.Payload)
+	} else if req.Type == "label" {
+		var operatorData map[string]interface{}
+		err = json.Unmarshal(req.Payload, &operatorData)
+		if err != nil {
+			abortWithError(c, http.StatusBadRequest, "params error: invalid payload")
+			return
+		}
+
+		var payloads []interface{}
+
+		for key, value := range operatorData {
+			payload := PatchStringValue{
+				Op:    "add",
+				Path:  "/metadata/labels/" + key,
+				Value: value,
+			}
+			payloads = append(payloads, payload)
+		}
+
+		payloadBytes, _ := json.Marshal(payloads)
+		newNode, err = nodesClient.Patch(req.ResourceName, types.JSONPatchType, payloadBytes)
+	}
+	if err != nil {
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	succeed(c, newNode)
 }
 
 func webhookKubeValidateHandler(c *gin.Context) {
