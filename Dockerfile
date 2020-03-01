@@ -1,4 +1,4 @@
-FROM golang:alpine
+FROM golang:1.13-alpine3.10
 
 ARG version
 ARG proxy
@@ -19,7 +19,7 @@ RUN cd /go/src/github.com/tengattack/dandelion \
   && cd cmd/dandelion && go install -ldflags "-X main.Version=$version" && cd ../.. \
   && cd cmd/dandelion-seed && go install -ldflags "-X main.Version=$version" && cd ../..
 
-FROM alpine
+FROM alpine:3.10
 
 # Download packages from aliyun mirrors
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \

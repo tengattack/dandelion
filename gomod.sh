@@ -9,7 +9,7 @@ gomod() {
   cd /go/src/$1
 
   GO111MODULE=on GOPROXY=https://goproxy.io go mod init
-  echo -e '\nreplace (\n\tgithub.com/confluentinc/confluent-kafka-go => github.com/confluentinc/confluent-kafka-go v0.11.6\n\tk8s.io/api => k8s.io/api v0.0.0-20190222213804-5cb15d344471\n\tk8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190221221350-bfb440be4b87\n\tk8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628\n\tk8s.io/client-go => k8s.io/client-go v10.0.0+incompatible\n)\n' >> go.mod
+  echo -e '\nreplace (\n\tgithub.com/confluentinc/confluent-kafka-go => github.com/confluentinc/confluent-kafka-go v0.11.6\n\tk8s.io/api => k8s.io/api v0.0.0-20190222213804-5cb15d344471\n\tk8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190221221350-bfb440be4b87\n\tk8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628\n\tk8s.io/client-go => k8s.io/client-go v10.0.0+incompatible\n\tgithub.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.0\n)\n' >> go.mod
   GO111MODULE=on GOPROXY=https://goproxy.io go mod vendor
   rsync -a ./vendor/ /go/src/
   rm -rf ./vendor go.mod go.sum
