@@ -55,9 +55,11 @@ type SectionKafka struct {
 
 // SectionKubernetes is sub section of config.
 type SectionKubernetes struct {
-	InCluster bool   `yaml:"in_cluster"`
-	Config    string `yaml:"config"`
-	Namespace string `yaml:"namespace"`
+	InCluster      bool   `yaml:"in_cluster"`
+	Config         string `yaml:"config"`
+	Namespace      string `yaml:"namespace"`
+	NodeNameFormat string `yaml:"node_name_format"`
+	NodeNameRange  [2]int `yaml:"node_name_range"`
 }
 
 // SectionRegistry is sub section of config.
@@ -108,6 +110,8 @@ func BuildDefaultConf() Config {
 
 	// Kubernetes
 	conf.Kubernetes.Namespace = "default"
+	conf.Kubernetes.NodeNameFormat = ""
+	conf.Kubernetes.NodeNameRange = [2]int{0, 999}
 
 	// Registry
 	conf.Registry.Endpoint = ""

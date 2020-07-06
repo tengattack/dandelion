@@ -54,6 +54,13 @@ type DeploymentEvent struct {
 	Status *extensionsv1beta1.DeploymentStatus `json:"status"`
 }
 
+// NodeNameCache for new node name
+type NodeNameCache struct {
+	lock     sync.Mutex
+	names    map[string]struct{}
+	lastTime time.Time
+}
+
 // Equal checks whether the event is same
 func (e *DeploymentEvent) Equal(event *DeploymentEvent) bool {
 	ok := false
@@ -90,6 +97,7 @@ var (
 	webhookClient     *webhook.Client
 	eventsConns       map[string][]*websocket.Conn
 	eventsConnMutex   *sync.Mutex
+	nodeNameCache     *NodeNameCache
 
 	errDeploymentIsNotManaged = errors.New("deployment is not managed by dandelion")
 )
@@ -115,6 +123,7 @@ func initKubeClient() error {
 	webhookClient = webhook.NewClient(&config.Conf.Webhook)
 	eventsConnMutex = new(sync.Mutex)
 	eventsConns = make(map[string][]*websocket.Conn)
+	nodeNameCache = new(NodeNameCache)
 	return nil
 }
 
@@ -407,6 +416,51 @@ func kubePatchHandler(c *gin.Context) {
 	}
 
 	succeed(c, newNode)
+}
+
+func kubeNewNodeHandler(c *gin.Context) {
+	nodesClient := clientset.CoreV1().Nodes()
+
+	if config.Conf.Kubernetes.NodeNameFormat == "" {
+		abortWithError(c, http.StatusInternalServerError, "empty config node_name_format")
+		return
+	}
+
+	nodeNameCache.lock.Lock()
+	defer nodeNameCache.lock.Unlock()
+
+	now := time.Now()
+	if nodeNameCache.names == nil || nodeNameCache.lastTime.IsZero() || now.Add(-time.Minute*10).After(nodeNameCache.lastTime) {
+		nodeNameCache.names = make(map[string]struct{})
+		nodeNameCache.lastTime = now
+	}
+	defer func() {
+		nodeNameCache.lastTime = time.Now()
+	}()
+
+	nodeList, err := nodesClient.List(metav1.ListOptions{})
+	if err != nil {
+		abortWithError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	for _, item := range nodeList.Items {
+		nodeNameCache.names[item.Name] = struct{}{}
+	}
+
+	var nodeName string
+	// NOTICE: max 1000 nodes
+	for i := config.Conf.Kubernetes.NodeNameRange[0]; i <= config.Conf.Kubernetes.NodeNameRange[1]; i++ {
+		nodeName = fmt.Sprintf(config.Conf.Kubernetes.NodeNameFormat, i)
+		if _, ok := nodeNameCache.names[nodeName]; !ok {
+			nodeNameCache.names[nodeName] = struct{}{}
+			succeed(c, map[string]interface{}{
+				"node": map[string]interface{}{"name": nodeName},
+			})
+			return
+		}
+	}
+
+	abortWithError(c, http.StatusInternalServerError, "no enough node name in pool")
 }
 
 func webhookKubeValidateHandler(c *gin.Context) {

@@ -43,6 +43,8 @@ kubernetes:
   in_cluster: false # default: false
   config: '~/.kube/config'
   namespace: 'default' # default: 'default'
+  node_name_format: ''
+  node_name_range: [0, 999] # default: [0, 999]
 
 registry:
   endpoint: 'http://127.0.0.1:5000'

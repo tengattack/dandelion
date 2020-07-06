@@ -126,6 +126,7 @@ func routerEngine() *gin.Engine {
 	g.POST("/kube/rollback/:deployment", kubeRollbackHandler)
 	g.POST("/kube/restart/:deployment", kubeRestartHandler)
 	g.POST("/kube/patch", kubePatchHandler)
+	g.POST("/kube/newnode", kubeNewNodeHandler)
 
 	return r
 }
