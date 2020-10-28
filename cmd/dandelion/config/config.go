@@ -64,9 +64,11 @@ type SectionKubernetes struct {
 
 // SectionRegistry is sub section of config.
 type SectionRegistry struct {
+	Service  string `yaml:"service"`
 	Endpoint string `yaml:"endpoint"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+	Verify   bool   `yaml:"verify"`
 }
 
 // SectionWebhook is sub section of config.

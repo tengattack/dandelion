@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -129,6 +129,7 @@ func initKubeClient() error {
 
 func getImageName(dp *appsv1.Deployment) string {
 	if image, ok := dp.Labels["image"]; ok {
+		image = strings.ReplaceAll(image, "__", "/")
 		return image
 	}
 	return dp.Name
@@ -346,8 +347,6 @@ func kubeListTagsHandler(c *gin.Context) {
 		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("registry list tags error: %v", err))
 		return
 	}
-
-	sort.Sort(sort.Reverse(sort.StringSlice(tags.Tags)))
 
 	succeed(c, gin.H{"image_name": tags.Name, "tags": tags.Tags})
 }

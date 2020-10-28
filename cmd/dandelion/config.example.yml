@@ -47,9 +47,11 @@ kubernetes:
   node_name_range: [0, 999] # default: [0, 999]
 
 registry:
+  #service: registry # or harbor
   endpoint: 'http://127.0.0.1:5000'
   #username:
   #password:
+  #verify: true
 
 # send events to webhook
 webhook:
