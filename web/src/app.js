@@ -9,11 +9,14 @@ import { AppDetails, Deployment, Homepage, KubePage, NotFound } from './containe
 
 class App extends Component {
   render() {
+    const envTag = window.ENV ? (
+      <span className="env-tag">{window.ENV}</span>
+    ) : null
     return (
       <div id="app">
         <header className="app-header">
           <img src={logo} className="app-logo" alt="logo" />
-          <Link to="/"><h1 className="app-title">Dandelion</h1></Link>
+          <Link to="/"><h1 className="app-title">Dandelion</h1>{envTag}</Link>
           <span className="s">&gt;</span>
           <Link to="/kube"><h1 className="app-title">Kube</h1></Link>
         </header>

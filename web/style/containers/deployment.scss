@@ -1,6 +1,9 @@
 #Deployment {
   margin: 20px;
   text-align: left;
+  .image-name {
+    line-break: anywhere;
+  }
   .actions {
     .tags-select {
       width: 200px;

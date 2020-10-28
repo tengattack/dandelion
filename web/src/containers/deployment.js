@@ -168,7 +168,7 @@ export class Deployment extends Component {
     return (
       <div id="Deployment">
         <h2>{ dp.name }</h2>
-        <p>Image: { dp.image }</p>
+        <p className="image-name">Image: { dp.image }</p>
         <p>Replicas: { dp.replicas }</p>
         <p>Revision: { dp.revision }</p>
         <br />

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,10 +15,12 @@ import (
 
 var (
 	baseURLRegexp *regexp.Regexp
+	envRegexp     *regexp.Regexp
 )
 
 func init() {
 	baseURLRegexp = regexp.MustCompile(`(<base href=|\.PUBLIC_URL = )".*"`)
+	envRegexp = regexp.MustCompile(`(\.ENV = )".*"`)
 }
 
 // InitHandlers init http server handlers
@@ -67,6 +70,12 @@ func indexHandler(c *gin.Context) {
 		// runtime update base path
 		res = baseURLRegexp.ReplaceAll(res, []byte(`$1"`+strings.Repeat("../", n-1)+`"`))
 	}
+
+	env := os.Getenv("ENV")
+	if env != "" {
+		res = envRegexp.ReplaceAll(res, []byte(`$1`+strconv.Quote(env)))
+	}
+
 	c.Data(http.StatusOK, contentType, res)
 }
 

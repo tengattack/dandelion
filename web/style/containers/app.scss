@@ -13,8 +13,22 @@
     color: white;
     .app-title {
       float: left;
-      font-size: 1.5em;
+      font-size: 1.2em;
       color: $white;
+    }
+    .env-tag {
+      float: left;
+      display: inline-block;
+      margin-left: 10px;
+      margin-top: 29px;
+      padding: 0 7px;
+      height: 22px;
+      color: $white;
+      background: rgb(16, 142, 233);
+      line-height: 22px;
+      font-size: 14px;
+      border-radius: 3px;
+      vertical-align: middle;
     }
     .app-intro {
       font-size: large;
@@ -23,5 +37,11 @@
       float: left;
       margin: 0 10px;
     }
+  }
+}
+
+@media screen and (min-width: 640px) {
+  #app .app-header .app-title {
+    font-size: 1.5em;
   }
 }
