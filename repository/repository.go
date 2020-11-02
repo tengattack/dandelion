@@ -3,12 +3,12 @@ package repository
 import (
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/tengattack/dandelion/log"
-
 	"golang.org/x/crypto/ssh"
 	git "gopkg.in/src-d/go-git.v4"
 	gitconfig "gopkg.in/src-d/go-git.v4/config"
@@ -16,6 +16,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport"
+	githttp "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
@@ -41,6 +42,7 @@ func isDirExists(path string) bool {
 func InitRepository(repoPath, remoteURL string) (*Repository, error) {
 	var auth transport.AuthMethod
 	if strings.HasPrefix(remoteURL, "git@") {
+		// Git SSH
 		homePath := os.Getenv("HOME")
 		keyPath := path.Join(homePath, ".ssh/id_rsa")
 		log.LogAccess.Debugf("ssh key path: %s", keyPath)
@@ -63,6 +65,27 @@ func InitRepository(repoPath, remoteURL string) (*Repository, error) {
 				},
 			},
 		}
+	} else if strings.HasPrefix(remoteURL, "http:") || strings.HasPrefix(remoteURL, "https:") {
+		// Git HTTP
+		u, err := url.Parse(remoteURL)
+		if err != nil {
+			return nil, err
+		}
+		if u.User != nil {
+			pass, _ := u.User.Password()
+			if u.User.Username() != "" && pass != "" {
+				auth = &githttp.BasicAuth{
+					Username: u.User.Username(),
+					Password: pass,
+				}
+			} else if u.User.Username() != "" {
+				auth = &githttp.TokenAuth{
+					Token: u.User.Username(),
+				}
+			}
+		}
+		u.User = nil
+		remoteURL = u.String()
 	}
 	pullOptions = &git.PullOptions{
 		RemoteName: "origin",
