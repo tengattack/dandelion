@@ -20,7 +20,7 @@ var (
 
 func init() {
 	baseURLRegexp = regexp.MustCompile(`(<base href=|\.PUBLIC_URL = )".*"`)
-	envRegexp = regexp.MustCompile(`(\.ENV = )".*"`)
+	envRegexp = regexp.MustCompile(`(\.DEPLOY_ENV = )".*"`)
 }
 
 // InitHandlers init http server handlers
@@ -71,7 +71,7 @@ func indexHandler(c *gin.Context) {
 		res = baseURLRegexp.ReplaceAll(res, []byte(`$1"`+strings.Repeat("../", n-1)+`"`))
 	}
 
-	env := os.Getenv("ENV")
+	env := os.Getenv("DEPLOY_ENV")
 	if env != "" {
 		res = envRegexp.ReplaceAll(res, []byte(`$1`+strconv.Quote(env)))
 	}

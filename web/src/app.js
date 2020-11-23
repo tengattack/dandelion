@@ -9,8 +9,8 @@ import { AppDetails, Deployment, Homepage, KubePage, NotFound } from './containe
 
 class App extends Component {
   render() {
-    const envTag = window.ENV ? (
-      <span className="env-tag">{window.ENV}</span>
+    const envTag = window.DEPLOY_ENV ? (
+      <span className="env-tag">{window.DEPLOY_ENV}</span>
     ) : null
     return (
       <div id="app">
