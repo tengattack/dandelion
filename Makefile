@@ -1,11 +1,12 @@
 NAME=dandelion
-VERSION=0.2.4
+VERSION=0.2.5
 REGISTRY_PREFIX=$(if $(REGISTRY),$(addsuffix /, $(REGISTRY)))
 
 .PHONY: build publish web
 
 build:
 	docker build --build-arg version=${VERSION} \
+		--build-arg proxy=proxy.srv.maoer.cn:8123 \
 		-t ${NAME}:${VERSION} .
 
 publish:

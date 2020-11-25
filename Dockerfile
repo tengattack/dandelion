@@ -23,6 +23,10 @@ FROM alpine:3.10
 
 # Download packages from aliyun mirrors
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
-  && apk --update add --no-cache ca-certificates tzdata openssl zlib librdkafka
+  && apk --update add --no-cache ca-certificates tzdata openssl zlib librdkafka \
+  # using /etc/hosts over DNS
+  # https://github.com/golang/go/issues/35305
+  && echo "hosts: files dns" > /etc/nsswitch.conf
+
 COPY --from=0 /go/bin/dandelion /go/bin/dandelion-seed /bin/
 
