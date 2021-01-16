@@ -57,7 +57,7 @@ func main() {
 	}
 	client.SetLogger(log.GetClientLogger())
 
-	config.Repo, err = repository.InitRepository(conf.Core.RepositoryPath, conf.Core.RemoteURL)
+	config.Repo, err = repository.InitRepository(&conf.Repository)
 	if err != nil {
 		log.LogError.Errorf("init repository error: %v", err)
 		panic(err)

@@ -5,7 +5,7 @@ import (
 	"runtime"
 
 	"github.com/tengattack/tgo/log"
-
+	"github.com/tengattack/dandelion/repository"
 	"gopkg.in/yaml.v2"
 )
 
@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Core       SectionCore       `yaml:"core"`
 	Log        log.Config        `yaml:"log"`
+	Repository repository.Config `yaml:"repository"`
 	Database   SectionDatabase   `yaml:"database"`
 	Kafka      SectionKafka      `yaml:"kafka"`
 	Kubernetes SectionKubernetes `yaml:"kubernetes"`
@@ -31,9 +32,7 @@ type SectionCore struct {
 	CertKeyPath    string `yaml:"cert_key_path"`
 	Mode           string `yaml:"mode"`
 	PublicURL      string `yaml:"public_url"`
-	RepositoryPath string `yaml:"repository_path"`
 	ArchivePath    string `yaml:"archive_path"`
-	RemoteURL      string `yaml:"remote_url"`
 }
 
 // SectionDatabase is sub section of config.
@@ -87,8 +86,6 @@ func BuildDefaultConf() Config {
 	conf.Core.SSL = false
 	conf.Core.Mode = "release"
 	conf.Core.PublicURL = ""
-	conf.Core.RepositoryPath = ""
-	conf.Core.RemoteURL = ""
 
 	// Log
 	conf.Log.Format = "string"
@@ -97,6 +94,11 @@ func BuildDefaultConf() Config {
 	conf.Log.ErrorLog = "stderr"
 	conf.Log.ErrorLevel = "error"
 	conf.Log.Agent.Enabled = false
+
+	// Repository
+	conf.Repository.RepositoryPath = ""
+	conf.Repository.RemoteURL = ""
+	conf.Repository.HTTPProxy = ""
 
 	// Database
 	conf.Database.Host = "127.0.0.1"

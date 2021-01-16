@@ -8,9 +8,7 @@ core:
   #cert_key_path: /path/to/ssl_cert_key
   mode: 'release'
   public_url: '' # public url for web browser request, need last slash
-  repository_path: /tmp/gittest
   archive_path: /tmp/gitarchive
-  remote_url: git@github.com:tengattack/gittest.git
 
 log:
   format: "string" # string or json
@@ -24,6 +22,11 @@ log:
     app_id: dandelion
     #host: '' # log host, defaults to os.Getenv("HOST") or os.Hostname()
     #instance_id: '' # log instance_id, defaults to os.Getenv("INSTANCE_ID") or os.Hostname()
+
+repository:
+  repository_path: /tmp/gittest
+  remote_url: git@github.com:tengattack/gittest.git
+  #http_proxy: ''
 
 database:
   host: '127.0.0.1'

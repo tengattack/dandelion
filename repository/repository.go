@@ -3,22 +3,32 @@ package repository
 import (
 	"io/ioutil"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"strings"
+	"time"
 
+	git "github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	gitclient "github.com/go-git/go-git/v5/plumbing/transport/client"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/tengattack/dandelion/log"
 	"golang.org/x/crypto/ssh"
-	git "gopkg.in/src-d/go-git.v4"
-	gitconfig "gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
-	"gopkg.in/src-d/go-git.v4/plumbing/storer"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport"
-	githttp "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
-	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
+
+// Config for repository
+type Config struct {
+	RepositoryPath string `yaml:"repository_path"`
+	RemoteURL      string `yaml:"remote_url"`
+	HTTPProxy      string `yaml:"http_proxy"`
+}
 
 // Repository the repository structure
 type Repository struct {
@@ -39,7 +49,11 @@ func isDirExists(path string) bool {
 }
 
 // InitRepository init or open the repository
-func InitRepository(repoPath, remoteURL string) (*Repository, error) {
+func InitRepository(repoConf *Config) (*Repository, error) {
+	repoPath := repoConf.RepositoryPath
+	remoteURL := repoConf.RemoteURL
+	httpProxy := repoConf.HTTPProxy
+
 	var auth transport.AuthMethod
 	if strings.HasPrefix(remoteURL, "git@") {
 		// Git SSH
@@ -86,6 +100,25 @@ func InitRepository(repoPath, remoteURL string) (*Repository, error) {
 		}
 		u.User = nil
 		remoteURL = u.String()
+
+		if httpProxy != "" {
+			proxyURL, err := url.Parse(httpProxy)
+			if err != nil {
+				return nil, err
+			}
+			customClient := &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyURL(proxyURL),
+				},
+				Timeout: 60 * time.Second, // 60 seconds timeout
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse // don't follow redirect
+				},
+			}
+			// Override http(s) default protocol to use our custom client
+			gitclient.InstallProtocol("http", githttp.NewClient(customClient))
+			gitclient.InstallProtocol("https", githttp.NewClient(customClient))
+		}
 	}
 	pullOptions = &git.PullOptions{
 		RemoteName: "origin",
