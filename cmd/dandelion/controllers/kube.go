@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,7 +85,7 @@ func (e *DeploymentEvent) Equal(event *DeploymentEvent) bool {
 // consts
 const (
 	RevisionAnnotation    = "deployment.kubernetes.io/revision"
-	DandelionManagedLabel = "dandelion-managed"
+	DandelionManagedLabel = "dandelion.to/managed"
 	LastRestartEnv        = "LAST_RESTART"
 )
 
@@ -127,8 +126,16 @@ func initKubeClient() error {
 	return nil
 }
 
+func getRegistryBind(dp *appsv1.Deployment) string {
+	if image, ok := dp.Labels["dandelion.to/bind"]; ok {
+		image = strings.ReplaceAll(image, "__", "/")
+		return image
+	}
+	return dp.Name
+}
+
 func getImageName(dp *appsv1.Deployment) string {
-	if image, ok := dp.Labels["image"]; ok {
+	if image, ok := dp.Labels["dandelion.to/image"]; ok {
 		image = strings.ReplaceAll(image, "__", "/")
 		return image
 	}
@@ -181,12 +188,6 @@ func kubeSetVersionTagHandler(c *gin.Context) {
 	tag := c.PostForm("version_tag")
 	// TODO: check tag exists
 
-	u, err := url.Parse(config.Conf.Registry.Endpoint)
-	if err != nil {
-		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("registry endpoint error: %v", err))
-		return
-	}
-
 	var dp *appsv1.Deployment
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		// Retrieve the latest version of Deployment before attempting update
@@ -202,7 +203,7 @@ func kubeSetVersionTagHandler(c *gin.Context) {
 
 		// get image name from labels
 		imageName := getImageName(result)
-		image := fmt.Sprintf("%s/%s:%s", u.Host, imageName, tag)
+		image := fmt.Sprintf("%s:%s", imageName, tag)
 
 		result.Spec.Template.Spec.Containers[0].Image = image // change image
 		var updateErr error
@@ -340,9 +341,9 @@ func kubeListTagsHandler(c *gin.Context) {
 		return
 	}
 
-	// get image name from labels
-	imageName := getImageName(dp)
-	tags, err := registryClient.ListTags(imageName)
+	// get registry bind from labels
+	imageBind := getRegistryBind(dp)
+	tags, err := registryClient.ListTags(imageBind)
 	if err != nil {
 		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("registry list tags error: %v", err))
 		return
