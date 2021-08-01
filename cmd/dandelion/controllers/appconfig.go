@@ -19,14 +19,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/gobwas/glob"
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/log"
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // CommitAuthor is app config commit author structure
@@ -300,25 +300,12 @@ func appPublishConfigHandler(c *gin.Context) {
 		return
 	}
 
-	if config.MQ != nil {
-		m := app.NotifyMessage{
-			AppID:  appID,
-			Event:  "publish",
-			Config: appConfig,
-		}
-		message, err := json.Marshal(m)
-		if err != nil {
-			log.LogError.Errorf("encode message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
-		err = config.MQ.Publish(string(message))
-		if err != nil {
-			log.LogError.Errorf("publish message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
+	m := app.NotifyMessage{
+		AppID:  appID,
+		Event:  "publish",
+		Config: &appConfig,
 	}
+	notifyConn(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,
@@ -362,26 +349,13 @@ func appRollbackConfigHandler(c *gin.Context) {
 		return
 	}
 
-	if config.MQ != nil {
-		// rollback, notify all nodes
-		m := app.NotifyMessage{
-			AppID:  appID,
-			Event:  "rollback",
-			Config: appConfig,
-		}
-		message, err := json.Marshal(m)
-		if err != nil {
-			log.LogError.Errorf("encode message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
-		err = config.MQ.Publish(string(message))
-		if err != nil {
-			log.LogError.Errorf("publish message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
+	// rollback, notify all nodes
+	m := app.NotifyMessage{
+		AppID:  appID,
+		Event:  "rollback",
+		Config: &appConfig,
 	}
+	notifyConn(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,
@@ -434,16 +408,11 @@ func appCheckHandler(c *gin.Context) {
 		return
 	}
 
-	if config.MQ != nil {
-		// TODO: using json.Marshal
-		message := fmt.Sprintf(`{"app_id":"%s","event":"%s"}`, appID, "check")
-		err := config.MQ.Publish(message)
-		if err != nil {
-			log.LogError.Errorf("publish message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
+	m := app.NotifyMessage{
+		AppID: appID,
+		Event: "check"
 	}
+	notifyConn(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,
