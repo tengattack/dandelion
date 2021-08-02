@@ -21,9 +21,13 @@ import (
 // DandelionClient client interfaces
 type DandelionClient struct {
 	URL          string
-	c            *websocket.Conn
+	conn         *websocket.Conn
+	closeCh      chan struct{}
+	notifyMsgCh  chan []byte
 	wsLock       *sync.Mutex
 	lastStatuses map[int]map[string]interface{}
+
+	notifyMsgHandler NotifyMessageHandler
 }
 
 // DandelionResponse is the default dandelion restful API response structure
@@ -34,6 +38,9 @@ type DandelionResponse struct {
 
 // InstanceStatus is current instance status
 type InstanceStatus int
+
+// NotifyMessageHandler .
+type NotifyMessageHandler func(m *app.NotifyMessage)
 
 const (
 	// APIPrefix is the prefix for the API URL
@@ -48,6 +55,8 @@ const (
 	StatusSuccess
 	StatusError
 )
+
+var errChannelClosed = errors.New("channel closed")
 
 // NewDandelionClient create new dandelion client instance
 func NewDandelionClient(serverURL string, syncOnly bool) (*DandelionClient, error) {
@@ -68,6 +77,72 @@ func NewDandelionClient(serverURL string, syncOnly bool) (*DandelionClient, erro
 	return c, nil
 }
 
+func (c *DandelionClient) SetNotifyMessageHandler(h NotifyMessageHandler) {
+	c.notifyMsgHandler = h
+}
+
+func (c *DandelionClient) handleWebSocketMessage(msg []byte) {
+	var m app.NotifyMessage
+	err := json.Unmarshal(msg, &m)
+	if err != nil {
+		clientLogger.Errorf("unknown notify message: %s", msg)
+		return
+	}
+	if c.notifyMsgHandler == nil {
+		return
+	}
+	c.notifyMsgHandler(&m)
+}
+
+func (c *DandelionClient) serve() {
+	for {
+		select {
+		case _, ok := <-c.closeCh:
+			if !ok {
+				return
+			}
+		default:
+		}
+
+		t, msg, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+				clientLogger.Errorf("unexpected close error: %v", err)
+			}
+			if c.notifyMsgCh != nil {
+				close(c.notifyMsgCh) // notify channel closed
+				c.notifyMsgCh = nil
+			}
+			break
+		}
+		if t == websocket.TextMessage || t == websocket.BinaryMessage {
+			clientLogger.Infof("received message: %s", msg)
+			c.notifyMsgCh <- msg
+		}
+	}
+}
+
+func (c *DandelionClient) ping() error {
+	var statuses []map[string]interface{}
+	for _, v := range c.lastStatuses {
+		statuses = append(statuses, v)
+	}
+	message := app.WSMessage{
+		Action:  "ping",
+		Payload: statuses,
+	}
+
+	c.wsLock.Lock()
+	err := c.conn.WriteJSON(message)
+	c.wsLock.Unlock()
+	if err != nil {
+		clientLogger.Errorf("websocket ping failed: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (c *DandelionClient) initWebSocket() error {
 	u, _ := url.Parse(c.URL)
 
@@ -83,39 +158,59 @@ func (c *DandelionClient) initWebSocket() error {
 		return err
 	}
 	c.wsLock = new(sync.Mutex)
+	c.closeCh = make(chan struct{})
+	c.notifyMsgCh = make(chan []byte, 20)
+	c.conn = client
+	connected := true
+	go c.serve()
 	go func() {
 		// TODO: add context
 		for {
-			time.Sleep(time.Minute * 2)
-
-			var statuses []map[string]interface{}
-			for _, v := range c.lastStatuses {
-				statuses = append(statuses, v)
+			select {
+			case <-time.After(time.Minute * 2):
+				if connected {
+					err = c.ping()
+				}
+			case <-c.closeCh:
+				return
+			case m, ok := <-c.notifyMsgCh:
+				if !ok {
+					if c.closeCh != nil {
+						// unexpected channel closed, cause closeCh should close first normally
+						err = errChannelClosed
+					} else {
+						return
+					}
+				} else {
+					c.handleWebSocketMessage(m)
+				}
 			}
-			message := app.WSMessage{
-				Action:  "ping",
-				Payload: statuses,
-			}
-
-			c.wsLock.Lock()
-			err := client.WriteJSON(message)
-			c.wsLock.Unlock()
-			if err != nil {
-				clientLogger.Errorf("websocket ping failed: %v", err)
-				client2, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
+			if err != nil && c.closeCh != nil {
+				c.wsLock.Lock()
+				c.conn.Close() // close explicitly
+				connected = false
+				c.wsLock.Unlock()
+				client, _, err = websocket.DefaultDialer.Dial(u.String(), headers)
 				if err == nil {
 					// reconnected
-					clientLogger.Debugf("websocket reconnected")
-					client = client2
+					clientLogger.Infof("websocket reconnected")
 					c.wsLock.Lock()
-					c.c = client2
+					c.conn = client
+					connected = true
 					c.wsLock.Unlock()
+
+					// reset notify message channel
+					if c.notifyMsgCh != nil {
+						close(c.notifyMsgCh)
+						c.notifyMsgCh = nil
+					}
+					c.notifyMsgCh = make(chan []byte, 20)
+
+					go c.serve()
 				}
 			}
 		}
 	}()
-
-	c.c = client
 
 	return nil
 }
@@ -310,21 +405,29 @@ func (c *DandelionClient) SetStatus(cfg *app.ClientConfig, status InstanceStatus
 	c.lastStatuses[cfg.ID] = payload
 	clientLogger.Debugf("set status: %v", message)
 
-	if c.c == nil {
+	if c.conn == nil {
 		return nil
 	}
 
 	c.wsLock.Lock()
 	defer c.wsLock.Unlock()
-	return c.c.WriteJSON(message)
+	return c.conn.WriteJSON(message)
 }
 
 // Close connection to dandelion server
 func (c *DandelionClient) Close() error {
-	if c.c == nil {
+	if c.conn == nil {
 		return nil
 	}
-	err := c.c.Close()
-	c.c = nil
+	if c.closeCh != nil {
+		close(c.closeCh)
+		c.closeCh = nil
+	}
+	if c.notifyMsgCh != nil {
+		close(c.notifyMsgCh)
+		c.notifyMsgCh = nil
+	}
+	err := c.conn.Close()
+	c.conn = nil
 	return err
 }
