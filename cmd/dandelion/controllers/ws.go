@@ -71,7 +71,8 @@ func removeConnPoolInfo(conn *websocket.Conn) {
 	wsConnPoolMutex.Lock()
 	defer wsConnPoolMutex.Unlock()
 
-	for _, pool := range wsConnPool {
+	var removeKeys []string
+	for k, pool := range wsConnPool {
 		j := 0
 		for _, c := range pool {
 			if c.conn != conn {
@@ -79,8 +80,15 @@ func removeConnPoolInfo(conn *websocket.Conn) {
 				j++
 			}
 		}
-		if j != len(pool) {
-			pool = pool[:j]
+		if j == 0 {
+			removeKeys = append(removeKeys, k)
+		} else if j != len(pool) {
+			wsConnPool[k] = pool[:j]
+		}
+	}
+	if len(removeKeys) > 0 {
+		for _, k := range removeKeys {
+			delete(wsConnPool, k)
 		}
 	}
 }
@@ -103,10 +111,12 @@ func notifyConn(m *app.NotifyMessage) {
 		log.LogError.Errorf("encode message error: %v", err)
 		return
 	}
-	err = config.MQ.Publish(string(message))
-	if err != nil {
-		log.LogError.Errorf("publish message error: %v", err)
-		// PASS
+	if config.Conf.Kafka.Enabled {
+		err = config.MQ.Publish(string(message))
+		if err != nil {
+			log.LogError.Errorf("publish message error: %v", err)
+			// PASS
+		}
 	}
 
 	wsConnPoolMutex.Lock()

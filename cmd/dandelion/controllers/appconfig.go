@@ -5,8 +5,6 @@ import (
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -410,7 +408,7 @@ func appCheckHandler(c *gin.Context) {
 
 	m := app.NotifyMessage{
 		AppID: appID,
-		Event: "check"
+		Event: "check",
 	}
 	notifyConn(&m)
 
