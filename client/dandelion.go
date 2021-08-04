@@ -166,23 +166,34 @@ func (c *DandelionClient) initWebSocket() error {
 	go func() {
 		// TODO: add context
 		for {
-			select {
-			case <-time.After(time.Minute * 2):
-				if connected {
-					err = c.ping()
-				}
-			case <-c.closeCh:
-				return
-			case m, ok := <-c.notifyMsgCh:
-				if !ok {
-					if c.closeCh != nil {
-						// unexpected channel closed, cause closeCh should close first normally
-						err = errChannelClosed
-					} else {
-						return
+			if c.notifyMsgCh == nil {
+				select {
+				case <-time.After(time.Minute * 2):
+					if connected {
+						err = c.ping()
 					}
-				} else {
-					c.handleWebSocketMessage(m)
+				case <-c.closeCh:
+					return
+				}
+			} else {
+				select {
+				case <-time.After(time.Minute * 2):
+					if connected {
+						err = c.ping()
+					}
+				case <-c.closeCh:
+					return
+				case m, ok := <-c.notifyMsgCh:
+					if !ok {
+						if c.closeCh != nil {
+							// unexpected channel closed, cause closeCh should close first normally
+							err = errChannelClosed
+						} else {
+							return
+						}
+					} else {
+						c.handleWebSocketMessage(m)
+					}
 				}
 			}
 			if err != nil && c.closeCh != nil {
