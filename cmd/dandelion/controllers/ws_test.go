@@ -48,3 +48,39 @@ func TestConnPool(t *testing.T) {
 	_, ok := wsConnPool["s1"]
 	assert.False(ok, "conn pool for s1 should not exists")
 }
+
+func TestHandleWebSocketMessage(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	conn1 := new(websocket.Conn)
+
+	err := handleWebSocketMessage(conn1, []byte(``))
+	assert.Error(err)
+
+	// action status
+	err = handleWebSocketMessage(conn1,
+		[]byte(`{"action":"status","payload":""}`))
+	assert.Error(err)
+
+	err = handleWebSocketMessage(conn1,
+		[]byte(`{"action":"status","payload":{"app_id":"s1","host":"host1","instance_id":"instance1","config_id":1,"status":1}}`))
+	require.NoError(err)
+
+	err = handleWebSocketMessage(conn1,
+		[]byte(`{"action":"status","payload":{"app_id":"s1","host":"host1","instance_id":"instance1","config_id":2,"status":0}}`))
+	require.NoError(err)
+
+	err = handleWebSocketMessage(conn1,
+		[]byte(`{"action":"status","payload":{"app_id":"s1","host":"host1","instance_id":"instance1","config_id":2,"status":1}}`))
+	require.NoError(err)
+
+	// action ping
+	err = handleWebSocketMessage(conn1,
+		[]byte(`{"action":"ping"}`))
+	assert.EqualError(err, "websocket: write timeout")
+
+	err = handleWebSocketMessage(conn1,
+		[]byte(`{"action":"ping","payload":[{"app_id":"s1","host":"host1","instance_id":"instance1","config_id":2,"status":1}]}`))
+	assert.EqualError(err, "websocket: write timeout")
+}
