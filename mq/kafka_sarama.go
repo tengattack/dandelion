@@ -75,6 +75,7 @@ func NewConsumer(servers []string, topic, groupID string, sigchan chan os.Signal
 	// init (custom) config, enable errors and notifications
 	config := cluster.NewConfig()
 	config.Consumer.Return.Errors = true
+	config.Consumer.Offsets.CommitInterval = 1 * time.Second
 	config.Group.Return.Notifications = true
 
 	c, err := cluster.NewConsumer(servers, groupID, []string{topic}, config)
