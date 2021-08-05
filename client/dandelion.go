@@ -197,10 +197,12 @@ func (c *DandelionClient) initWebSocket() error {
 				}
 			}
 			if err != nil && c.closeCh != nil {
-				c.wsLock.Lock()
-				c.conn.Close() // close explicitly
-				connected = false
-				c.wsLock.Unlock()
+				if connected {
+					c.wsLock.Lock()
+					c.conn.Close() // close explicitly
+					connected = false
+					c.wsLock.Unlock()
+				}
 				client, _, err = websocket.DefaultDialer.Dial(u.String(), headers)
 				if err == nil {
 					// reconnected
