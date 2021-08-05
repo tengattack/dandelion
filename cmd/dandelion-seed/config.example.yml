@@ -21,7 +21,7 @@ dandelion:
   url: 'http://127.0.0.1:9012'
 
 kafka:
-  enabled: true # default: true
+  enabled: false # default: false
   topic: test
   #group_id: test1 # defaults to os.Getenv("INSTANCE_ID") or os.Hostname()
   servers:

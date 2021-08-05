@@ -91,7 +91,7 @@ func BuildDefaultConf() Config {
 	conf.Dandelion.URL = "http://127.0.0.1:9012"
 
 	// Kafka
-	conf.Kafka.Enabled = true
+	conf.Kafka.Enabled = false
 	conf.Kafka.Topic = ""
 	conf.Kafka.GroupID = ""
 
