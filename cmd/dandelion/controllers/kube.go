@@ -546,7 +546,8 @@ func isDeploymentComplete(deployment *extensionsv1beta1.Deployment, newStatus *e
 func triggerDeploymentEvent(deployment, action string) {
 	go func() {
 		client := clientset.ExtensionsV1beta1().Deployments(config.Conf.Kubernetes.Namespace)
-		timeoutCh := time.After(5 * time.Minute)
+		timeoutDuration := 2 * time.Minute
+		timeoutCh := time.After(timeoutDuration)
 		var lastEvent *DeploymentEvent
 		for {
 			timeout := false
@@ -577,6 +578,8 @@ func triggerDeploymentEvent(deployment, action string) {
 			if !event.Equal(lastEvent) {
 				publishEventTo(deployment, event)
 				lastEvent = event
+				// reset timeout
+				timeoutCh = time.After(timeoutDuration)
 			}
 
 			if event.Event != "processing" {
