@@ -139,6 +139,13 @@ func getImageName(dp *appsv1.Deployment) string {
 		image = strings.ReplaceAll(image, "__", "/")
 		return image
 	}
+	if len(dp.Spec.Template.Spec.Containers) > 0 {
+		image := dp.Spec.Template.Spec.Containers[0].Image
+		pos := strings.LastIndex(image, ":")
+		if pos >= 0 {
+			return image[:pos]
+		}
+	}
 	return dp.Name
 }
 
