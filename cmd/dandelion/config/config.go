@@ -42,6 +42,7 @@ type SectionDatabase struct {
 	Name         string `yaml:"name"`
 	User         string `yaml:"user"`
 	Pass         string `yaml:"pass"`
+	TablePrefix  string `yaml:"table_prefix"`
 	MaxIdleConns int    `yaml:"max_idle_conns"`
 }
 
@@ -106,6 +107,7 @@ func BuildDefaultConf() Config {
 	conf.Database.Name = ""
 	conf.Database.User = ""
 	conf.Database.Pass = ""
+	conf.Database.TablePrefix = ""
 	conf.Database.MaxIdleConns = runtime.NumCPU()
 
 	// Kafka
