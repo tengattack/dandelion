@@ -9,7 +9,7 @@ import (
 
 var (
 	// UserAgent for http request
-	UserAgent    = "dandelion-cli/0.0.2"
+	UserAgent    = "dandelion-cli/0.3.0"
 	clientLogger Logger
 )
 
