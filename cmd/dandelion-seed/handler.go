@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tengattack/dandelion/app"
+	"github.com/tengattack/dandelion/log"
 )
 
 const (
@@ -28,13 +28,7 @@ func succeed(c *gin.Context, message interface{}) {
 }
 
 // HandleMessage handle dandelion messages
-func HandleMessage(message string) error {
-	var m app.NotifyMessage
-	err := json.Unmarshal([]byte(message), &m)
-	if err != nil {
-		return err
-	}
-
+func HandleMessage(m *app.NotifyMessage) {
 	switch m.Event {
 	case "check":
 		fallthrough
@@ -44,14 +38,14 @@ func HandleMessage(message string) error {
 		for _, config := range Conf.Configs {
 			// TODO: check matching of host and instance_id
 			if config.AppID == m.AppID {
-				err = CheckAppConfig(&config)
+				err := CheckAppConfig(&config)
 				if err != nil {
-					return err
+					log.LogError.WithField("app_id", m.AppID).Errorf("handle message error: %v", err)
+					// PASS
 				}
 			}
 		}
 	}
-	return nil
 }
 
 func appHealthHandler(c *gin.Context) {

@@ -5,8 +5,6 @@ import (
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,14 +17,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/gobwas/glob"
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/log"
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // CommitAuthor is app config commit author structure
@@ -45,10 +43,6 @@ type Commit struct {
 }
 
 const (
-	// TableNameConfigs the app configs table
-	TableNameConfigs = "dandelion_app_configs"
-	// TableNameInstances the app instances table
-	TableNameInstances = "dandelion_app_instances"
 	// ParamsError the http bad request for error params
 	ParamsError = "Params error"
 )
@@ -58,6 +52,16 @@ var (
 	lArchive       *sync.RWMutex
 	cachedBranches []string
 )
+
+// TableNameConfigs the app configs table
+func TableNameConfigs() string {
+	return config.Conf.Database.TablePrefix + "dandelion_app_configs"
+}
+
+// TableNameInstances the app instances table
+func TableNameInstances() string {
+	return config.Conf.Database.TablePrefix + "dandelion_app_instances"
+}
 
 func getBranches(force bool) ([]string, error) {
 	if force || cachedBranches == nil {
@@ -284,7 +288,7 @@ func appPublishConfigHandler(c *gin.Context) {
 		UpdatedTime: t,
 	}
 
-	r, err := config.DB.NamedExec("INSERT INTO "+TableNameConfigs+
+	r, err := config.DB.NamedExec("INSERT INTO "+TableNameConfigs()+
 		" (app_id, status, version, host, instance_id, commit_id, md5sum, author, created_time, updated_time)"+
 		" VALUES (:app_id, :status, :version, :host, :instance_id, :commit_id, :md5sum, :author, :created_time, :updated_time)", &appConfig)
 	if err != nil {
@@ -300,25 +304,12 @@ func appPublishConfigHandler(c *gin.Context) {
 		return
 	}
 
-	if config.MQ != nil {
-		m := app.NotifyMessage{
-			AppID:  appID,
-			Event:  "publish",
-			Config: appConfig,
-		}
-		message, err := json.Marshal(m)
-		if err != nil {
-			log.LogError.Errorf("encode message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
-		err = config.MQ.Publish(string(message))
-		if err != nil {
-			log.LogError.Errorf("publish message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
+	m := app.NotifyMessage{
+		AppID:  appID,
+		Event:  "publish",
+		Config: &appConfig,
 	}
+	notifyConn(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,
@@ -339,7 +330,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 	}
 
 	var appConfig app.AppConfig
-	err := config.DB.Get(&appConfig, "SELECT * FROM "+TableNameConfigs+" WHERE id = ? AND status = 1", id)
+	err := config.DB.Get(&appConfig, "SELECT * FROM "+TableNameConfigs()+" WHERE id = ? AND status = 1", id)
 	if err == sql.ErrNoRows {
 		abortWithError(c, http.StatusNotFound, err.Error())
 		return
@@ -355,33 +346,20 @@ func appRollbackConfigHandler(c *gin.Context) {
 	}
 
 	t := time.Now().Unix()
-	_, err = config.DB.Exec("UPDATE "+TableNameConfigs+" SET status = 0, updated_time = ? WHERE id = ?", t, id)
+	_, err = config.DB.Exec("UPDATE "+TableNameConfigs()+" SET status = 0, updated_time = ? WHERE id = ?", t, id)
 	if err != nil {
 		log.LogError.Errorf("db update error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if config.MQ != nil {
-		// rollback, notify all nodes
-		m := app.NotifyMessage{
-			AppID:  appID,
-			Event:  "rollback",
-			Config: appConfig,
-		}
-		message, err := json.Marshal(m)
-		if err != nil {
-			log.LogError.Errorf("encode message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
-		err = config.MQ.Publish(string(message))
-		if err != nil {
-			log.LogError.Errorf("publish message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
+	// rollback, notify all nodes
+	m := app.NotifyMessage{
+		AppID:  appID,
+		Event:  "rollback",
+		Config: &appConfig,
 	}
+	notifyConn(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,
@@ -398,7 +376,7 @@ func appMatchConfigHandler(c *gin.Context) {
 
 	var configs []app.AppConfig
 	// TODO: apply limit & offset
-	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 AND version <= ? ORDER BY created_time DESC",
+	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs()+" WHERE app_id = ? AND status = 1 AND version <= ? ORDER BY created_time DESC",
 		appID, version)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)
@@ -434,16 +412,11 @@ func appCheckHandler(c *gin.Context) {
 		return
 	}
 
-	if config.MQ != nil {
-		// TODO: using json.Marshal
-		message := fmt.Sprintf(`{"app_id":"%s","event":"%s"}`, appID, "check")
-		err := config.MQ.Publish(message)
-		if err != nil {
-			log.LogError.Errorf("publish message error: %v", err)
-			abortWithError(c, http.StatusInternalServerError, err.Error())
-			return
-		}
+	m := app.NotifyMessage{
+		AppID: appID,
+		Event: "check",
 	}
+	notifyConn(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,
@@ -454,7 +427,7 @@ func appListConfigsHandler(c *gin.Context) {
 	appID := c.Param("app_id")
 
 	var configs []app.AppConfig
-	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs+" WHERE app_id = ? AND status = 1 ORDER BY created_time DESC",
+	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs()+" WHERE app_id = ? AND status = 1 ORDER BY created_time DESC",
 		appID)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)
@@ -787,7 +760,7 @@ func appListInstancesHandler(c *gin.Context) {
 	var statuses []app.Status
 	// show active instances from last day
 	t := time.Now().AddDate(0, 0, -1).Unix()
-	err := config.DB.Select(&statuses, "SELECT * FROM "+TableNameInstances+" WHERE app_id = ? AND updated_time >= ? ORDER BY updated_time DESC",
+	err := config.DB.Select(&statuses, "SELECT * FROM "+TableNameInstances()+" WHERE app_id = ? AND updated_time >= ? ORDER BY updated_time DESC",
 		appID, t)
 	if err != nil {
 		log.LogError.Errorf("db select error: %v", err)

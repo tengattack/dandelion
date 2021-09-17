@@ -1,4 +1,4 @@
-// +build !windows,!test
+// +build cgo,!windows,!test
 
 package mq
 

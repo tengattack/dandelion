@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"
 	"github.com/tengattack/dandelion/log"
@@ -81,6 +83,10 @@ func main() {
 		return
 	}
 
+	Client.SetNotifyMessageHandler(func(m *app.NotifyMessage) {
+		HandleMessage(m)
+	})
+
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -96,10 +102,13 @@ func main() {
 
 		for message := range m.Messages() {
 			log.LogAccess.Infof("received message: %s", message)
-			err = HandleMessage(message)
+			var m app.NotifyMessage
+			err := json.Unmarshal([]byte(message), &m)
 			if err != nil {
-				log.LogError.Errorf("handle message error: %v", err)
+				log.LogError.Errorf("unknown notify message: %s", message)
+				continue
 			}
+			HandleMessage(&m)
 		}
 	} else {
 		<-sigchan

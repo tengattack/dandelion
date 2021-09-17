@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"runtime"
 
-	"github.com/tengattack/tgo/log"
 	"github.com/tengattack/dandelion/repository"
+	"github.com/tengattack/tgo/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -23,16 +23,16 @@ type Config struct {
 
 // SectionCore is sub section of config.
 type SectionCore struct {
-	Enabled        bool   `yaml:"enabled"`
-	Address        string `yaml:"address"`
-	Port           int    `yaml:"port"`
-	SSL            bool   `yaml:"ssl"`
-	SSLPort        int    `yaml:"ssl_port"`
-	CertPath       string `yaml:"cert_path"`
-	CertKeyPath    string `yaml:"cert_key_path"`
-	Mode           string `yaml:"mode"`
-	PublicURL      string `yaml:"public_url"`
-	ArchivePath    string `yaml:"archive_path"`
+	Enabled     bool   `yaml:"enabled"`
+	Address     string `yaml:"address"`
+	Port        int    `yaml:"port"`
+	SSL         bool   `yaml:"ssl"`
+	SSLPort     int    `yaml:"ssl_port"`
+	CertPath    string `yaml:"cert_path"`
+	CertKeyPath string `yaml:"cert_key_path"`
+	Mode        string `yaml:"mode"`
+	PublicURL   string `yaml:"public_url"`
+	ArchivePath string `yaml:"archive_path"`
 }
 
 // SectionDatabase is sub section of config.
@@ -42,6 +42,7 @@ type SectionDatabase struct {
 	Name         string `yaml:"name"`
 	User         string `yaml:"user"`
 	Pass         string `yaml:"pass"`
+	TablePrefix  string `yaml:"table_prefix"`
 	MaxIdleConns int    `yaml:"max_idle_conns"`
 }
 
@@ -106,10 +107,11 @@ func BuildDefaultConf() Config {
 	conf.Database.Name = ""
 	conf.Database.User = ""
 	conf.Database.Pass = ""
+	conf.Database.TablePrefix = ""
 	conf.Database.MaxIdleConns = runtime.NumCPU()
 
 	// Kafka
-	conf.Kafka.Enabled = true
+	conf.Kafka.Enabled = false
 	conf.Kafka.Topic = ""
 
 	// Kubernetes
