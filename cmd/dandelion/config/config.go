@@ -11,14 +11,15 @@ import (
 
 // Config is config structure.
 type Config struct {
-	Core       SectionCore       `yaml:"core"`
-	Log        log.Config        `yaml:"log"`
-	Repository repository.Config `yaml:"repository"`
-	Database   SectionDatabase   `yaml:"database"`
-	Kafka      SectionKafka      `yaml:"kafka"`
-	Kubernetes SectionKubernetes `yaml:"kubernetes"`
-	Registry   SectionRegistry   `yaml:"registry"`
-	Webhook    SectionWebhook    `yaml:"webhook"`
+	Core          SectionCore          `yaml:"core"`
+	Log           log.Config           `yaml:"log"`
+	Repository    repository.Config    `yaml:"repository"`
+	Database      SectionDatabase      `yaml:"database"`
+	Kafka         SectionKafka         `yaml:"kafka"`
+	Kubernetes    SectionKubernetes    `yaml:"kubernetes"`
+	CloudProvider SectionCloudProvider `yaml:"cloud_provider"`
+	Registry      SectionRegistry      `yaml:"registry"`
+	Webhook       SectionWebhook       `yaml:"webhook"`
 }
 
 // SectionCore is sub section of config.
@@ -61,6 +62,9 @@ type SectionKubernetes struct {
 	NodeNameFormat string `yaml:"node_name_format"`
 	NodeNameRange  [2]int `yaml:"node_name_range"`
 }
+
+// SectionCloudProvider is sub section of config.
+type SectionCloudProvider map[string]string
 
 // SectionRegistry is sub section of config.
 type SectionRegistry struct {
@@ -118,6 +122,9 @@ func BuildDefaultConf() Config {
 	conf.Kubernetes.Namespace = "default"
 	conf.Kubernetes.NodeNameFormat = ""
 	conf.Kubernetes.NodeNameRange = [2]int{0, 999}
+
+	// CloudProvider
+	conf.CloudProvider = make(SectionCloudProvider)
 
 	// Registry
 	conf.Registry.Endpoint = ""

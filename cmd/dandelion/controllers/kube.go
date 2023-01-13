@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/tengattack/dandelion/cmd/dandelion/cloudprovider"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/cmd/dandelion/registry"
 	"github.com/tengattack/dandelion/cmd/dandelion/webhook"
@@ -460,6 +461,12 @@ func kubeNewNodeHandler(c *gin.Context) {
 		nodeName = fmt.Sprintf(config.Conf.Kubernetes.NodeNameFormat, i)
 		if _, ok := nodeNameCache.names[nodeName]; !ok {
 			nodeNameCache.names[nodeName] = struct{}{}
+			clientIP := c.ClientIP()
+			err2 := cloudprovider.SetNodeName(clientIP, nodeName)
+			if err2 != nil {
+				log.LogError.Errorf("cloud provider set %q node name %q error: %v", clientIP, nodeName, err2)
+				// PASS
+			}
 			succeed(c, map[string]interface{}{
 				"node": map[string]interface{}{"name": nodeName},
 			})
