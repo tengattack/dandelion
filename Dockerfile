@@ -17,6 +17,8 @@ RUN cd /go/src/github.com/tengattack/dandelion \
 #  && cd confluent-kafka-go/kafka/go_rdkafka_generr \
 #  && go build && ./go_rdkafka_generr ../generated_errors.go \
 #  && cd /go/src/github.com/tengattack/dandelion \
+  && mv contrib/* . \
+  && GOPROXY=$goproxy go mod tidy \
   && cd cmd/dandelion && CGO_ENABLED=0 GOPROXY=$goproxy go install -ldflags "-X main.Version=$version" && cd ../.. \
   && cd cmd/dandelion-seed && CGO_ENABLED=0 GOPROXY=$goproxy go install -ldflags "-X main.Version=$version" && cd ../..
 
