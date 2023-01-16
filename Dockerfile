@@ -19,8 +19,8 @@ RUN cd /go/src/github.com/tengattack/dandelion \
 #  && cd /go/src/github.com/tengattack/dandelion \
   && mv contrib/* . \
   && GOPROXY=$goproxy go mod tidy \
-  && cd cmd/dandelion && CGO_ENABLED=0 GOPROXY=$goproxy go install -ldflags "-X main.Version=$version" && cd ../.. \
-  && cd cmd/dandelion-seed && CGO_ENABLED=0 GOPROXY=$goproxy go install -ldflags "-X main.Version=$version" && cd ../..
+  && cd cmd/dandelion && CGO_ENABLED=0 GOPROXY=$goproxy go install -v -ldflags "-X main.Version=$version" && cd ../.. \
+  && cd cmd/dandelion-seed && CGO_ENABLED=0 GOPROXY=$goproxy go install -v -ldflags "-X main.Version=$version" && cd ../..
 
 FROM alpine:3.12
 

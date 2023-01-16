@@ -131,6 +131,7 @@ func routerEngine() *gin.Engine {
 	// kube
 	g.GET("/kube/list", kubeListHandler)
 	g.GET("/kube/listtags/:deployment", kubeListTagsHandler)
+	g.GET("/kube/detail/:deployment", kubeDetailHandler)
 	g.POST("/kube/setversiontag/:deployment", kubeSetVersionTagHandler)
 	g.POST("/kube/rollback/:deployment", kubeRollbackHandler)
 	g.POST("/kube/restart/:deployment", kubeRestartHandler)

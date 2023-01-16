@@ -19,12 +19,15 @@ import (
 	"github.com/tengattack/dandelion/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	typedautoscalingv2beta2 "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
@@ -44,6 +47,13 @@ type Deployment struct {
 	Image     string `json:"image"`
 	Replicas  int    `json:"replicas"`
 	Revision  int64  `json:"revision"`
+}
+
+// HPA for kube hpa
+type HPA struct {
+	Name        string `json:"name"`
+	MinReplicas int    `json:"min_replicas"`
+	MaxReplicas int    `json:"max_replicas"`
 }
 
 // DeploymentEvent for deployment status
@@ -93,6 +103,7 @@ const (
 var (
 	clientset         *kubernetes.Clientset
 	deploymentsClient typedappsv1.DeploymentInterface
+	hpasClient        typedautoscalingv2beta2.HorizontalPodAutoscalerInterface
 	registryClient    *registry.Client
 	webhookClient     *webhook.Client
 	eventsConns       map[string][]*websocket.Conn
@@ -119,6 +130,7 @@ func initKubeClient() error {
 	}
 
 	deploymentsClient = clientset.AppsV1().Deployments(config.Conf.Kubernetes.Namespace)
+	hpasClient = clientset.AutoscalingV2beta2().HorizontalPodAutoscalers(config.Conf.Kubernetes.Namespace)
 	registryClient = registry.NewClient(&config.Conf.Registry)
 	webhookClient = webhook.NewClient(&config.Conf.Webhook)
 	eventsConnMutex = new(sync.Mutex)
@@ -169,6 +181,17 @@ func getDeployment(dp *appsv1.Deployment) *Deployment {
 	return &d
 }
 
+func getHPA(hpa *v2beta2.HorizontalPodAutoscaler) *HPA {
+	h := HPA{
+		Name:        hpa.Name,
+		MaxReplicas: int(hpa.Spec.MaxReplicas),
+	}
+	if hpa.Spec.MinReplicas != nil {
+		h.MinReplicas = int(*hpa.Spec.MinReplicas)
+	}
+	return &h
+}
+
 func kubeListHandler(c *gin.Context) {
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
@@ -188,6 +211,33 @@ func kubeListHandler(c *gin.Context) {
 	}
 
 	succeed(c, gin.H{"deployments": ds})
+}
+
+func kubeDetailHandler(c *gin.Context) {
+	deployment := c.Param("deployment")
+
+	dp, err := deploymentsClient.Get(deployment, metav1.GetOptions{})
+	if err != nil {
+		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("deployment get error: %v", err))
+		return
+	}
+
+	// check permissions
+	if !isManaged(dp) {
+		abortWithError(c, http.StatusForbidden, errDeploymentIsNotManaged.Error())
+		return
+	}
+
+	hpa, err := hpasClient.Get(deployment, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("hpa get error: %v", err))
+		return
+	}
+
+	d := getDeployment(dp)
+	h := getHPA(hpa)
+
+	succeed(c, gin.H{"deployment": d, "hpa": h})
 }
 
 func kubeSetVersionTagHandler(c *gin.Context) {
