@@ -182,6 +182,9 @@ func getDeployment(dp *appsv1.Deployment) *Deployment {
 }
 
 func getHPA(hpa *v2beta2.HorizontalPodAutoscaler) *HPA {
+	if hpa == nil {
+		return nil
+	}
 	h := HPA{
 		Name:        hpa.Name,
 		MaxReplicas: int(hpa.Spec.MaxReplicas),
@@ -383,6 +386,78 @@ func kubeRestartHandler(c *gin.Context) {
 	triggerDeploymentEvent(deployment, "restart")
 
 	succeed(c, gin.H{"deployment": getDeployment(dp), "ok": 1})
+}
+
+func kubeSetReplicasHandler(c *gin.Context) {
+	deployment := c.Param("deployment")
+
+	replicasStr := c.PostForm("replicas")
+	replicas, err := strconv.Atoi(replicasStr)
+	if err != nil {
+		abortWithError(c, http.StatusBadRequest, "params error")
+		return
+	}
+
+	var newInt32 = func(v int) *int32 {
+		var a int32
+		a = int32(v)
+		return &a
+	}
+
+	var dp *appsv1.Deployment
+	var hpa *v2beta2.HorizontalPodAutoscaler
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// Retrieve the latest version of Deployment before attempting update
+		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+		result, getErr := deploymentsClient.Get(deployment, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+		// check permissions
+		if !isManaged(result) {
+			return errDeploymentIsNotManaged
+		}
+
+		var updateErr error
+
+		hpaResult, getErr := hpasClient.Get(deployment, metav1.GetOptions{})
+		if getErr != nil && !apierrors.IsNotFound(getErr) {
+			return getErr
+		}
+		if hpaResult != nil {
+			hpaResult.Spec.MinReplicas = newInt32(replicas)
+			if hpaResult.Spec.MaxReplicas < int32(replicas) {
+				hpaResult.Spec.MaxReplicas = int32(replicas)
+			}
+			hpa, updateErr = hpasClient.Update(hpaResult)
+			if updateErr != nil {
+				return updateErr
+			}
+		}
+
+		result.Spec.Replicas = newInt32(replicas)
+		dp, updateErr = deploymentsClient.Update(result)
+		if updateErr != nil {
+			return updateErr
+		}
+		return nil
+	})
+	if retryErr == errDeploymentIsNotManaged {
+		abortWithError(c, http.StatusForbidden, retryErr.Error())
+		return
+	}
+	if retryErr != nil {
+		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("deployment set-replicas error: %v", retryErr))
+		return
+	}
+
+	// trigger events
+	triggerDeploymentEvent(deployment, "setreplicas")
+
+	d := getDeployment(dp)
+	h := getHPA(hpa)
+
+	succeed(c, gin.H{"deployment": d, "hpa": h, "ok": 1})
 }
 
 func kubeListTagsHandler(c *gin.Context) {
