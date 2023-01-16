@@ -41,6 +41,25 @@ export function kubeListTags(name) {
   }
 }
 
+export const KUBE_GET_DETAIL_REQUEST = 'KUBE_GET_DETAIL_REQUEST'
+export const KUBE_GET_DETAIL_SUCCESS = 'KUBE_GET_DETAIL_SUCCESS'
+export const KUBE_GET_DETAIL_FAILURE = 'KUBE_GET_DETAIL_FAILURE'
+
+export function kubeGetDetail(name) {
+  return {
+    [RSAA]: {
+      method: 'GET',
+      endpoint: API_URL + '/kube/detail/' + name,
+      types: [
+        KUBE_GET_DETAIL_REQUEST,
+        { type: KUBE_GET_DETAIL_SUCCESS, payload: apiPayload, meta: { name } },
+        KUBE_GET_DETAIL_FAILURE
+      ],
+      credentials: 'include',
+    }
+  }
+}
+
 export const KUBE_SET_TAG_REQUEST = 'KUBE_SET_TAG_REQUEST'
 export const KUBE_SET_TAG_SUCCESS = 'KUBE_SET_TAG_SUCCESS'
 export const KUBE_SET_TAG_FAILURE = 'KUBE_SET_TAG_FAILURE'
@@ -100,6 +119,31 @@ export function kubeRestart(name) {
         KUBE_RESTART_FAILURE
       ],
       credentials: 'include',
+    }
+  }
+}
+
+export const KUBE_SET_REPLICAS_REQUEST = 'KUBE_SET_REPLICAS_REQUEST'
+export const KUBE_SET_REPLICAS_SUCCESS = 'KUBE_SET_REPLICAS_SUCCESS'
+export const KUBE_SET_REPLICAS_FAILURE = 'KUBE_SET_REPLICAS_FAILURE'
+
+export function kubeSetReplicas(name, replicas) {
+  return {
+    [RSAA]: {
+      method: 'POST',
+      endpoint: API_URL + '/kube/setreplicas/' + name,
+      types: [
+        KUBE_SET_REPLICAS_REQUEST,
+        { type: KUBE_SET_REPLICAS_SUCCESS, payload: apiPayload, meta: { name, replicas } },
+        KUBE_SET_REPLICAS_FAILURE
+      ],
+      credentials: 'include',
+      headers: {
+        'Content-Type' : 'application/x-www-form-urlencoded',
+      },
+      body: querystring.stringify({
+        replicas,
+      }),
     }
   }
 }

@@ -2,6 +2,7 @@ import os from 'os'
 import path from 'path'
 import webpack from 'webpack'
 
+import dartSass from 'sass'
 import ExtractTextPlugin from 'extract-text-webpack-plugin'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
 
@@ -200,7 +201,13 @@ if (DEBUG) {
         'style-loader',
         'css-loader?sourceMap&root=' + cssRoot,
         postcssLoader,
-        'sass-loader?sourceMap&sourceMapContents',
+        {
+          loader: 'sass-loader',
+          options: {
+            implementation: dartSass,
+            sourceMap: true,
+          },
+        },
       ],
       exclude: /node_modules/,
       //include: path.join(__dirname, 'style/scss/sass'),
@@ -278,7 +285,16 @@ if (DEBUG) {
       use: extractCSS.extract({
         fallback: 'style-loader',
         publicPath: '../',
-        use: [ 'css-loader?root=' + cssRoot, postcssLoader, 'sass-loader' ],
+        use: [
+          'css-loader?root=' + cssRoot,
+          postcssLoader,
+          {
+            loader: 'sass-loader',
+            options: {
+              implementation: dartSass,
+            },
+          }
+        ],
       }),
       exclude: /node_modules/,
     },
@@ -313,6 +329,7 @@ if (DEBUG) {
     devtool: 'eval-source-map',
     devServer: {
       hot: true,
+      disableHostCheck: true,
       historyApiFallback: {
         index: '/assets/index.html',
       },

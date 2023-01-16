@@ -3,7 +3,7 @@ import { connect } from 'react-redux'
 import { createSelector } from 'reselect'
 import Select from 'react-select'
 
-import { kubeListDeployments, kubeListTags, kubeRollback, kubeSetTag, kubeRestart } from '../actions'
+import { kubeGetDetail, kubeListTags, kubeSetReplicas, kubeRollback, kubeSetTag, kubeRestart } from '../actions'
 import { kubeDeploymentsSelector } from '../selectors'
 
 import { Loading } from '../components'
@@ -17,9 +17,9 @@ const MAX_MESSAGE_SIZE = 50
     kubeDeploymentsSelector,
     deployments => ({ deployments })
   ), {
-    // TODO: update get single deployment
-    kubeListDeployments,
+    kubeGetDetail,
     kubeListTags,
+    kubeSetReplicas,
     kubeRollback,
     kubeSetTag,
     kubeRestart,
@@ -28,18 +28,24 @@ export class Deployment extends Component {
   constructor(props) {
     super(props)
     this.state = {
+      loading: true,
+      detail: null,
       setUpdate: false,
+      setReplicas: false,
       setRollback: false,
       setRestart: false,
       versionTag: '',
+      replicasValue: '',
       messages: [],
     }
   }
   componentWillMount() {
     const { name } = this.props.match.params
-    if (!this.props.deployments) {
-      this.props.kubeListDeployments()
-    }
+    this.props.kubeGetDetail(name)
+      .then((res) => {
+        this.setState({ detail: res.payload, loading: false })
+      })
+
     // connect websocket
     const u = new URL(window.PUBLIC_URL)
     let scheme = 'ws:'
@@ -107,6 +113,9 @@ export class Deployment extends Component {
     this.props.kubeListTags(name)
     this.setState({ setUpdate: true })
   }
+  onSetReplicasClick = () => {
+    this.setState({ setReplicas: true })
+  }
   onRollbackClick = () => {
     this.setState({ setRollback: true })
   }
@@ -123,12 +132,33 @@ export class Deployment extends Component {
       break
     }
   }
+  onReplicasInputChange = (e) => {
+    let val = e.target.value.trim()
+    val = parseInt(val)
+    if (!val) {
+      val = ''
+    } else if (val < 0) {
+      val = 0
+    }
+    this.setState({ replicasValue: val })
+  }
   onUpdateConfirmClick = () => {
     const { name } = this.props.match.params
     const { versionTag } = this.state
     if (versionTag) {
       this.props.kubeSetTag(name, versionTag)
       this.setState({ setUpdate: false })
+    }
+  }
+  onSetReplicasConfirmClick = () => {
+    const { name } = this.props.match.params
+    const { replicasValue } = this.state
+    if (replicasValue) {
+      this.props.kubeSetReplicas(name, replicasValue)
+        .then((res) => {
+          this.setState({ detail: res.payload })
+        })
+      this.setState({ setReplicas: false })
     }
   }
   onRollbackConfirmClick = () => {
@@ -142,40 +172,39 @@ export class Deployment extends Component {
     this.setState({ setRestart: false })
   }
   onCancelClick = () => {
-    this.setState({ setUpdate: false, setRollback: false, setRestart: false })
+    this.setState({ setUpdate: false, setReplicas: false, setRollback: false, setRestart: false })
   }
   render() {
-    const { name } = this.props.match.params
-    const { deployments } = this.props
-    if (!deployments) {
+    const { detail, loading } = this.state
+    if (loading) {
       return (
         <div id="Deployment">
           <Loading />
         </div>
       )
     }
-    let dp = null
-    for (let i = 0; i < deployments.length; i++) {
-      if (deployments[i].name === name) {
-        dp = deployments[i]
-        break
-      }
-    }
-    if (!dp) {
+    if (!detail || !detail.deployment) {
       return <NotFound />
     }
-    const { setUpdate, setRollback, setRestart, messages } = this.state
+    const dp = detail.deployment
+    const { setUpdate, setReplicas, setRollback, setRestart, messages } = this.state
     return (
       <div id="Deployment">
         <h2>{ dp.name }</h2>
         <p className="image-name">Image: { dp.image }</p>
         <p>Replicas: { dp.replicas }</p>
+        {
+          detail.hpa ? (
+            <p>HPA Replicas: { detail.hpa.min_replicas } - { detail.hpa.max_replicas }</p>
+          ) : undefined
+        }
         <p>Revision: { dp.revision }</p>
         <br />
         {
-          !setUpdate && !setRollback && !setRestart ? (
+          !setUpdate && !setReplicas && !setRollback && !setRestart ? (
             <div className="actions">
               <button className="btn btn-large btn-red update-btn" onClick={this.onUpdateClick}>Update</button>
+              <button className="btn btn-large replicas-btn" onClick={this.onSetReplicasClick}>Set Replicas</button>
               <button className="btn btn-large rollback-btn" onClick={this.onRollbackClick}>Rollback</button>
               <button className="btn btn-large restart-btn" onClick={this.onRestartClick}>Restart</button>
             </div>
@@ -196,6 +225,17 @@ export class Deployment extends Component {
                 }]}
               />
               <button className="btn btn-large btn-red update-btn" onClick={this.onUpdateConfirmClick}>Update</button>
+              <button className="btn btn-large cancel-btn" onClick={this.onCancelClick}>Cancel</button>
+            </div>
+          ) : undefined
+        }
+        {
+          setReplicas ? (
+            <div className="actions set-replicas">
+              <div className="form-input">
+                <input type="number" name="replicas" value={this.state.replicasValue} onChange={this.onReplicasInputChange} />
+              </div>
+              <button className="btn btn-large btn-red replicas-btn" onClick={this.onSetReplicasConfirmClick}>Confirm Set</button>
               <button className="btn btn-large cancel-btn" onClick={this.onCancelClick}>Cancel</button>
             </div>
           ) : undefined
