@@ -232,7 +232,11 @@ func kubeDetailHandler(c *gin.Context) {
 	}
 
 	hpa, err := hpasClient.Get(deployment, metav1.GetOptions{})
-	if err != nil && !apierrors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
+		hpa = nil
+		err = nil
+	}
+	if err != nil {
 		abortWithError(c, http.StatusInternalServerError, fmt.Sprintf("hpa get error: %v", err))
 		return
 	}
@@ -421,7 +425,11 @@ func kubeSetReplicasHandler(c *gin.Context) {
 		var updateErr error
 
 		hpaResult, getErr := hpasClient.Get(deployment, metav1.GetOptions{})
-		if getErr != nil && !apierrors.IsNotFound(getErr) {
+		if getErr != nil && apierrors.IsNotFound(getErr) {
+			hpaResult = nil
+			getErr = nil
+		}
+		if getErr != nil {
 			return getErr
 		}
 		if hpaResult != nil {
