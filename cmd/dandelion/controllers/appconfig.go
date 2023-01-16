@@ -154,7 +154,7 @@ func appSyncHandler(c *gin.Context) {
 			if appID == getAppID(branch) {
 				err = config.Repo.Pull(branch)
 				if err != nil && err != git.NoErrAlreadyUpToDate {
-					log.LogError.Errorf("pull error: %v", err)
+					log.LogError.WithField("branch", branch).Errorf("pull error: %v", err)
 					abortWithError(c, http.StatusInternalServerError, err.Error())
 					return
 				}
