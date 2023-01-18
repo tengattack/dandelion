@@ -1,0 +1,42 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: dandelion
+subjects:
+- kind: ServiceAccount
+  name: dandelion
+roleRef:
+  kind: ClusterRole
+  name: dandelion
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: dandelion
+  labels:
+    app: dandelion
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - namespaces
+  - events
+  - pods
+  verbs: ["get", "list", "watch", "patch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["extensions"]
+  resources: ["deployments/rollback"]
+  verbs: ["create"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dandelion
+  labels:
+    app: dandelion
