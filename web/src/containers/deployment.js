@@ -36,6 +36,7 @@ export class Deployment extends Component {
       setRestart: false,
       versionTag: '',
       replicasValue: '',
+      tags: null,
       messages: [],
     }
   }
@@ -65,6 +66,16 @@ export class Deployment extends Component {
     if (this.t) {
       clearInterval(this.t)
       this.t = null
+    }
+  }
+  handleDeploymentUpdate(res) {
+    if (res.payload && res.payload.deployment) {
+      this.setState({
+        detail: {
+          ...this.state.detail,
+          deployment: res.payload.deployment,
+        },
+      })
     }
   }
   addMessage(msg) {
@@ -111,6 +122,9 @@ export class Deployment extends Component {
   onUpdateClick = () => {
     const { name } = this.props.match.params
     this.props.kubeListTags(name)
+      .then((res) => {
+        this.setState({ tags: res.payload.tags })
+      })
     this.setState({ setUpdate: true })
   }
   onSetReplicasClick = () => {
@@ -147,6 +161,9 @@ export class Deployment extends Component {
     const { versionTag } = this.state
     if (versionTag) {
       this.props.kubeSetTag(name, versionTag)
+        .then((res) => {
+          this.handleDeploymentUpdate(res)
+        })
       this.setState({ setUpdate: false })
     }
   }
@@ -164,11 +181,17 @@ export class Deployment extends Component {
   onRollbackConfirmClick = () => {
     const { name } = this.props.match.params
     this.props.kubeRollback(name)
+      .then((res) => {
+        this.handleDeploymentUpdate(res)
+      })
     this.setState({ setRollback: false })
   }
   onRestartConfirmClick = () => {
     const { name } = this.props.match.params
     this.props.kubeRestart(name)
+      .then((res) => {
+        this.handleDeploymentUpdate(res)
+      })
     this.setState({ setRestart: false })
   }
   onCancelClick = () => {
@@ -187,7 +210,7 @@ export class Deployment extends Component {
       return <NotFound />
     }
     const dp = detail.deployment
-    const { setUpdate, setReplicas, setRollback, setRestart, messages } = this.state
+    const { setUpdate, setReplicas, setRollback, setRestart, tags, messages } = this.state
     return (
       <div id="Deployment">
         <h2>{ dp.name }</h2>
@@ -221,7 +244,7 @@ export class Deployment extends Component {
                 onChange={this.onChange}
                 options={[{
                   label: dp.image_name,
-                  options: dp.image_tags ? dp.image_tags.map((tag) => ({ value: tag, label: tag })) : [],
+                  options: tags ? tags.map((tag) => ({ value: tag, label: tag })) : [],
                 }]}
               />
               <button className="btn btn-large btn-red update-btn" onClick={this.onUpdateConfirmClick}>Update</button>
