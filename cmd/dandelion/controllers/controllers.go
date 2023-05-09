@@ -139,6 +139,9 @@ func routerEngine() *gin.Engine {
 	g.POST("/kube/patch", kubePatchHandler)
 	g.POST("/kube/newnode", kubeNewNodeHandler)
 
+	// access
+	g.GET("/access/check", accessCheckHandler)
+
 	return r
 }
 
