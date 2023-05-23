@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"syscall"
 
+	_ "go.uber.org/automaxprocs"
+
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"

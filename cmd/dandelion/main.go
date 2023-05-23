@@ -6,6 +6,8 @@ import (
 	"os"
 	"runtime"
 
+	_ "go.uber.org/automaxprocs"
+
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/log"
