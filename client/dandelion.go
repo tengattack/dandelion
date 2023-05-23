@@ -147,8 +147,12 @@ func (c *DandelionClient) initWebSocket() error {
 	u, _ := url.Parse(c.URL)
 
 	// websocket connect
-	u.Scheme = "ws"
-	u.Path = "/connect/push"
+	if u.Scheme == "https" {
+		u.Scheme = "wss"
+	} else {
+		u.Scheme = "ws"
+	}
+	u.Path += "/connect/push"
 
 	headers := http.Header{}
 	headers.Add("User-Agent", UserAgent)
