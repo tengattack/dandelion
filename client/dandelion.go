@@ -3,6 +3,7 @@ package client
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -156,6 +157,14 @@ func (c *DandelionClient) initWebSocket() error {
 
 	headers := http.Header{}
 	headers.Add("User-Agent", UserAgent)
+	if u.User != nil {
+		auth := u.User.String()
+		if auth != "" {
+			credentials := base64.URLEncoding.EncodeToString([]byte(auth))
+			headers.Set("Authorization", "Basic "+credentials)
+		}
+		u.User = nil
+	}
 
 	client, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
 	if err != nil {
