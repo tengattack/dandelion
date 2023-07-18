@@ -25,11 +25,11 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/onsi/gomega v1.14.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.7.1
-	github.com/tengattack/logrus-agent-hook v0.0.0-20190205052644-35fd90001636 // indirect
-	github.com/tengattack/tgo v0.0.0-20190420105756-400cce13925e
+	github.com/tengattack/logrus-agent-hook v0.0.0-20230522082256-ff02c4ad429e // indirect
+	github.com/tengattack/tgo v0.0.0-20230718110622-7aa611305d4d
 	go.uber.org/automaxprocs v1.5.1
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 	golang.org/x/oauth2 v0.0.0-20210113205817-d3ed898aa8a3 // indirect

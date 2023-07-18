@@ -279,8 +279,8 @@ github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475/go.mod h1:bCqn
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/sergi/go-diff v1.1.0 h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=
-github.com/sirupsen/logrus v1.7.0 h1:ShrD1U9pZB12TX0cVy0DtePoCH97K8EtX+mg7ZARUtM=
-github.com/sirupsen/logrus v1.7.0/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
+github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
+github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
@@ -294,10 +294,10 @@ github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5Cc
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.1 h1:5TQK59W5E3v0r2duFAb7P95B6hEeOyEnHRa8MjYSMTY=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
-github.com/tengattack/logrus-agent-hook v0.0.0-20190205052644-35fd90001636 h1:g2aqACqnLYaNWeulPrI4McM9ockWwSCDnCeysLrwGRk=
-github.com/tengattack/logrus-agent-hook v0.0.0-20190205052644-35fd90001636/go.mod h1:WeNjOhzwknNurrHtIAkQPPwEFkJJ00ZZ+c+T+e4+spg=
-github.com/tengattack/tgo v0.0.0-20190420105756-400cce13925e h1:7bcOi/qaTSSevJB39zvqHkTvCBB6HGNyzZ2DRRW2oqk=
-github.com/tengattack/tgo v0.0.0-20190420105756-400cce13925e/go.mod h1:sAHGTn5gjXAt2b98zQfJtXNBWzBnaE4igfkGYwq9lfw=
+github.com/tengattack/logrus-agent-hook v0.0.0-20230522082256-ff02c4ad429e h1:WQa9UHl91hzRWZl9+cB9ks/JPSmP0xB0lKs+doPEYT0=
+github.com/tengattack/logrus-agent-hook v0.0.0-20230522082256-ff02c4ad429e/go.mod h1:WeNjOhzwknNurrHtIAkQPPwEFkJJ00ZZ+c+T+e4+spg=
+github.com/tengattack/tgo v0.0.0-20230718110622-7aa611305d4d h1:ckhtLeubqUm/RQ4b5bzVo6wLFrIgzylh7ac820qsxgw=
+github.com/tengattack/tgo v0.0.0-20230718110622-7aa611305d4d/go.mod h1:sAHGTn5gjXAt2b98zQfJtXNBWzBnaE4igfkGYwq9lfw=
 github.com/ugorji/go v1.1.7 h1:/68gy2h+1mWMrwZFeD1kQialdSzAb432dtpeJ42ovdo=
 github.com/ugorji/go v1.1.7/go.mod h1:kZn38zHttfInRq0xu/PH0az30d+z6vm202qpg1oXVMw=
 github.com/ugorji/go/codec v1.1.7 h1:2SvQaVZ1ouYrrKKwoSk2pzd4A9evlKJb9oTL+OaLUSs=
