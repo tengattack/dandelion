@@ -296,8 +296,8 @@ github.com/stretchr/testify v1.7.1 h1:5TQK59W5E3v0r2duFAb7P95B6hEeOyEnHRa8MjYSMT
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/tengattack/logrus-agent-hook v0.0.0-20230522082256-ff02c4ad429e h1:WQa9UHl91hzRWZl9+cB9ks/JPSmP0xB0lKs+doPEYT0=
 github.com/tengattack/logrus-agent-hook v0.0.0-20230522082256-ff02c4ad429e/go.mod h1:WeNjOhzwknNurrHtIAkQPPwEFkJJ00ZZ+c+T+e4+spg=
-github.com/tengattack/tgo v0.0.0-20230718110622-7aa611305d4d h1:ckhtLeubqUm/RQ4b5bzVo6wLFrIgzylh7ac820qsxgw=
-github.com/tengattack/tgo v0.0.0-20230718110622-7aa611305d4d/go.mod h1:sAHGTn5gjXAt2b98zQfJtXNBWzBnaE4igfkGYwq9lfw=
+github.com/tengattack/tgo v0.0.0-20230807044243-d1864d3a5127 h1:7t7pyYy/wP7V22TECyC9ljTRGjuuH8XQE0i3ZHt4kQc=
+github.com/tengattack/tgo v0.0.0-20230807044243-d1864d3a5127/go.mod h1:sAHGTn5gjXAt2b98zQfJtXNBWzBnaE4igfkGYwq9lfw=
 github.com/ugorji/go v1.1.7 h1:/68gy2h+1mWMrwZFeD1kQialdSzAb432dtpeJ42ovdo=
 github.com/ugorji/go v1.1.7/go.mod h1:kZn38zHttfInRq0xu/PH0az30d+z6vm202qpg1oXVMw=
 github.com/ugorji/go/codec v1.1.7 h1:2SvQaVZ1ouYrrKKwoSk2pzd4A9evlKJb9oTL+OaLUSs=

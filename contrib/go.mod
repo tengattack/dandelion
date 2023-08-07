@@ -29,7 +29,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.7.1
 	github.com/tengattack/logrus-agent-hook v0.0.0-20230522082256-ff02c4ad429e // indirect
-	github.com/tengattack/tgo v0.0.0-20230718110622-7aa611305d4d
+	github.com/tengattack/tgo v0.0.0-20230807044243-d1864d3a5127
 	go.uber.org/automaxprocs v1.5.1
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 	golang.org/x/oauth2 v0.0.0-20210113205817-d3ed898aa8a3 // indirect
