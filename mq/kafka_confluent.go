@@ -1,3 +1,4 @@
+//go:build cgo && !windows && !test
 // +build cgo,!windows,!test
 
 package mq
@@ -7,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/tengattack/dandelion/log"
+
+	"github.com/tengattack/tgo/logger"
 )
 
 // MessageQueue is the message queue sturcture
@@ -31,9 +33,9 @@ func NewProducer(servers []string, topic string) (*MessageQueue, error) {
 			switch ev := e.(type) {
 			case *kafka.Message:
 				if ev.TopicPartition.Error != nil {
-					log.LogError.Errorf("Delivery failed: %v", ev.TopicPartition)
+					logger.Errorf("Delivery failed: %v", ev.TopicPartition)
 				} else {
-					log.LogAccess.Debugf("Delivered message to %v", ev.TopicPartition)
+					logger.Debugf("Delivered message to %v", ev.TopicPartition)
 				}
 			}
 		}
@@ -70,23 +72,23 @@ func NewConsumer(servers []string, topic, groupID string, sigchan chan os.Signal
 		for run == true {
 			select {
 			case sig := <-sigchan:
-				log.LogAccess.Infof("Caught signal %v: terminating", sig)
+				logger.Infof("Caught signal %v: terminating", sig)
 				run = false
 			case ev := <-c.Events():
 				switch e := ev.(type) {
 				case kafka.AssignedPartitions:
-					log.LogAccess.Debug(e)
+					logger.Debug(e)
 					c.Assign(e.Partitions)
 				case kafka.RevokedPartitions:
-					log.LogAccess.Debug(e)
+					logger.Debug(e)
 					c.Unassign()
 				case *kafka.Message:
-					log.LogAccess.Debug(e)
+					logger.Debug(e)
 					messages <- string(e.Value)
 				case kafka.PartitionEOF:
-					log.LogAccess.Debug(e)
+					logger.Debug(e)
 				case kafka.Error:
-					log.LogError.Error(e)
+					logger.Error(e)
 					if e.Code() == kafka.ErrAllBrokersDown {
 						// REVIEW: it will reconnect automatically?
 						// run = false

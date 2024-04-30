@@ -1,3 +1,4 @@
+//go:build (!cgo && !test) || (windows && !test)
 // +build !cgo,!test windows,!test
 
 package mq
@@ -8,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tengattack/dandelion/log"
-
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
+
+	"github.com/tengattack/tgo/logger"
 )
 
 // MessageQueue is the message queue sturcture
@@ -50,7 +51,7 @@ func NewProducer(servers []string, topic string) (*MessageQueue, error) {
 
 	producer, err := sarama.NewAsyncProducer(servers, config)
 	if err != nil {
-		log.LogError.Errorf("Failed to start Sarama producer: %v", err)
+		logger.Errorf("Failed to start Sarama producer: %v", err)
 		return nil, err
 	}
 
@@ -58,7 +59,7 @@ func NewProducer(servers []string, topic string) (*MessageQueue, error) {
 	// Note: messages will only be returned here after all retry attempts are exhausted.
 	go func() {
 		for err := range producer.Errors() {
-			log.LogError.Errorf("Failed to write message: %v", err)
+			logger.Errorf("Failed to write message: %v", err)
 		}
 	}()
 
@@ -88,14 +89,14 @@ func NewConsumer(servers []string, topic, groupID string, sigchan chan os.Signal
 	// consume errors
 	go func() {
 		for err := range c.Errors() {
-			log.LogError.Errorf("consume error: %v", err)
+			logger.Errorf("consume error: %v", err)
 		}
 	}()
 
 	// consume notifications
 	go func() {
 		for ntf := range c.Notifications() {
-			log.LogAccess.Debugf("rebalanced: %+v", ntf)
+			logger.Debugf("rebalanced: %+v", ntf)
 		}
 	}()
 
@@ -110,7 +111,7 @@ func NewConsumer(servers []string, topic, groupID string, sigchan chan os.Signal
 					c.MarkOffset(msg, "") // mark message as processed
 				}
 			case sig := <-sigchan:
-				log.LogAccess.Infof("Caught signal %v: terminating", sig)
+				logger.Infof("Caught signal %v: terminating", sig)
 				return
 			}
 		}

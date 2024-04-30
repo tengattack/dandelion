@@ -16,6 +16,7 @@ import (
 	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"
 	"github.com/tengattack/dandelion/log"
 	"github.com/tengattack/dandelion/mq"
+	"github.com/tengattack/tgo/logger"
 )
 
 var (
@@ -69,14 +70,14 @@ func main() {
 
 	Client, err = client.NewDandelionClient(Conf.Dandelion.URL, *syncOnly)
 	if err != nil {
-		log.LogError.Errorf("dandelion init error: %v", err)
+		logger.Errorf("dandelion init error: %v", err)
 		panic(err)
 	}
 	defer Client.Close()
 
 	err = CheckCurrentConfigs()
 	if err != nil {
-		log.LogError.Errorf("check current configs error: %v", err)
+		logger.Errorf("check current configs error: %v", err)
 		panic(err)
 	}
 
@@ -97,17 +98,17 @@ func main() {
 	if Conf.Kafka.Enabled {
 		m, err := mq.NewConsumer(Conf.Kafka.Servers, Conf.Kafka.Topic, Conf.Kafka.GroupID, sigchan)
 		if err != nil {
-			log.LogError.Errorf("check current configs error: %v", err)
+			logger.Errorf("check current configs error: %v", err)
 			panic(err)
 		}
 		defer m.Close()
 
 		for message := range m.Messages() {
-			log.LogAccess.Infof("received message: %s", message)
+			logger.Infof("received message: %s", message)
 			var m app.NotifyMessage
 			err := json.Unmarshal([]byte(message), &m)
 			if err != nil {
-				log.LogError.Errorf("unknown notify message: %s", message)
+				logger.Errorf("unknown notify message: %s", message)
 				continue
 			}
 			HandleMessage(&m)

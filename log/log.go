@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+
 	"github.com/tengattack/tgo/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 // colors
@@ -35,34 +36,27 @@ type ClientLogger struct {
 }
 
 func (l *ClientLogger) Debugf(format string, args ...interface{}) {
-	LogAccess.Debugf(format, args...)
+	logger.Debugf(format, args...)
 }
 
 func (l *ClientLogger) Infof(format string, args ...interface{}) {
-	LogAccess.Infof(format, args...)
+	logger.Infof(format, args...)
 }
 
 func (l *ClientLogger) Errorf(format string, args ...interface{}) {
-	LogError.Errorf(format, args...)
+	logger.Errorf(format, args...)
 }
 
-var conf *log.Config
-
 var (
-	// LogAccess is log access log
-	LogAccess *logrus.Logger
-	// LogError is log error log
-	LogError *logrus.Logger
+	conf *log.Config
 )
 
 // InitLog use for initial log module
 func InitLog(logConf *log.Config) error {
-	err := log.InitLog(logConf)
+	err := logger.InitLog("dandelion", logConf)
 	if err != nil {
 		return err
 	}
-	LogAccess = log.LogAccess
-	LogError = log.LogError
 	conf = log.GetLogConfig()
 	return nil
 }
@@ -116,7 +110,7 @@ func LogRequest(uri string, method string, ip string, contentType string, agent 
 		)
 	}
 
-	LogAccess.Info(output)
+	logger.Info(output)
 }
 
 // LogMiddleware provide gin router handler.

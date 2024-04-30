@@ -19,8 +19,9 @@ import (
 	gitclient "github.com/go-git/go-git/v5/plumbing/transport/client"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/tengattack/dandelion/log"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/tengattack/tgo/logger"
 )
 
 // Config for repository
@@ -59,7 +60,7 @@ func InitRepository(repoConf *Config) (*Repository, error) {
 		// Git SSH
 		homePath := os.Getenv("HOME")
 		keyPath := path.Join(homePath, ".ssh/id_rsa")
-		log.LogAccess.Debugf("ssh key path: %s", keyPath)
+		logger.Debugf("ssh key path: %s", keyPath)
 
 		sshKey, err := ioutil.ReadFile(keyPath)
 		if err != nil {
@@ -74,7 +75,7 @@ func InitRepository(repoConf *Config) (*Repository, error) {
 			Signer: signer,
 			HostKeyCallbackHelper: gitssh.HostKeyCallbackHelper{
 				HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-					log.LogAccess.Infof("git auth, host: %s (%s) pubkey: %s:%x", hostname, remote, key.Type(), key.Marshal())
+					logger.Infof("git auth, host: %s (%s) pubkey: %s:%x", hostname, remote, key.Type(), key.Marshal())
 					return nil
 				},
 			},
@@ -148,7 +149,7 @@ func InitRepository(repoConf *Config) (*Repository, error) {
 		repo, err = git.PlainOpen(repoPath)
 	}
 	if err != nil {
-		log.LogError.Errorf("init/open repository error: %v", err)
+		logger.Errorf("init/open repository error: %v", err)
 		return nil, err
 	}
 
@@ -158,7 +159,7 @@ func InitRepository(repoConf *Config) (*Repository, error) {
 		URLs: []string{remoteURL},
 	})
 	if err != nil && err != git.ErrRemoteExists {
-		log.LogError.Errorf("create remote error: %v", err)
+		logger.Errorf("create remote error: %v", err)
 		return nil, err
 	}
 
@@ -168,10 +169,10 @@ func InitRepository(repoConf *Config) (*Repository, error) {
 	}
 
 	if newRepo {
-		log.LogAccess.Info("fetching new repo...")
+		logger.Info("fetching new repo...")
 		err = r.SyncBranches()
 		if err != nil {
-			log.LogError.Errorf("sync branches error: %v", err)
+			logger.Errorf("sync branches error: %v", err)
 			return nil, err
 		}
 	}
@@ -193,7 +194,7 @@ func (r *Repository) Fetch() error {
 func (r *Repository) Pull(branch string) error {
 	wt, err := r.Repo.Worktree()
 	if err != nil {
-		log.LogError.Errorf("worktree error: %v", err)
+		logger.Errorf("worktree error: %v", err)
 		return err
 	}
 	po := pullOptions
@@ -203,7 +204,7 @@ func (r *Repository) Pull(branch string) error {
 		Force:  true,
 	})
 	if err != nil {
-		log.LogError.Errorf("checkout error: %v", err)
+		logger.Errorf("checkout error: %v", err)
 		return err
 	}
 	return wt.Pull(po)
@@ -236,14 +237,14 @@ func (r *Repository) SyncBranches() error {
 	err := r.Fetch()
 	if err == git.NoErrAlreadyUpToDate {
 		// already up to update
-		log.LogAccess.Debugf("sync branches: %v", err)
+		logger.Debugf("sync branches: %v", err)
 	} else if err != nil {
 		return err
 	}
 
 	refs, err := r.Repo.References()
 	if err != nil {
-		log.LogError.Errorf("get remotes error: %v", err)
+		logger.Errorf("get remotes error: %v", err)
 		return err
 	}
 	defer refs.Close()
@@ -253,7 +254,7 @@ func (r *Repository) SyncBranches() error {
 		if ref.Name().IsRemote() {
 			branchName := strings.SplitN(ref.Name().Short(), "/", 2)[1]
 
-			log.LogAccess.Debugf("ref: %s -> %s", branchName, ref.Name())
+			logger.Debugf("ref: %s -> %s", branchName, ref.Name())
 			branchRef := plumbing.NewHashReference(plumbing.ReferenceName("refs/heads/"+branchName), ref.Hash())
 			// The created reference is saved in the storage.
 			err = r.Repo.Storer.SetReference(branchRef)

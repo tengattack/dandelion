@@ -14,7 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 const upperhex = "0123456789ABCDEF"
@@ -140,7 +140,7 @@ func request(common AliyunEcsCommonParams, action string, params map[string]stri
 	}
 	q := sign(common, "GET", endpoint, reqParams)
 	httpClient := &http.Client{Timeout: 5 * time.Second}
-	log.LogAccess.Debugf("aliyun request: %s", endpoint+"?"+q.Encode())
+	logger.Debugf("aliyun request: %s", endpoint+"?"+q.Encode())
 	req, err := http.NewRequest(http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func request(common AliyunEcsCommonParams, action string, params map[string]stri
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http status %d", resp.StatusCode)
 	}
-	log.LogAccess.Debugf("aliyun response: %s", body)
+	logger.Debugf("aliyun response: %s", body)
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		return err

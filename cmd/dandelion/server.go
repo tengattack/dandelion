@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"net/http"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/cmd/dandelion/controllers"
-	"github.com/tengattack/dandelion/log"
-	"golang.org/x/sync/errgroup"
+	"github.com/tengattack/tgo/logger"
 )
 
 // RunHTTPServer provide run http or https protocol.
 func RunHTTPServer() error {
 	if !config.Conf.Core.Enabled {
-		log.LogAccess.Debug("httpd server is disabled.")
+		logger.Debug("httpd server is disabled.")
 		return nil
 	}
 
@@ -32,18 +33,18 @@ func RunHTTPServer() error {
 				config.Conf.Core.CertPath,
 				config.Conf.Core.CertKeyPath,
 				router)
-			log.LogAccess.Errorf("HTTPD server (SSL) listen error: %v", err)
+			logger.Errorf("HTTPD server (SSL) listen error: %v", err)
 			return err
 		})
-		log.LogAccess.Debugf("HTTPD server (SSL) is running on %s:%d.", config.Conf.Core.Address, config.Conf.Core.SSLPort)
+		logger.Debugf("HTTPD server (SSL) is running on %s:%d.", config.Conf.Core.Address, config.Conf.Core.SSLPort)
 	}
 
 	eg.Go(func() error {
 		err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.Conf.Core.Address, config.Conf.Core.Port), router)
-		log.LogAccess.Errorf("HTTPD server listen error: %v", err)
+		logger.Errorf("HTTPD server listen error: %v", err)
 		return err
 	})
-	log.LogAccess.Debugf("HTTPD server is running on %s:%d.", config.Conf.Core.Address, config.Conf.Core.Port)
+	logger.Debugf("HTTPD server is running on %s:%d.", config.Conf.Core.Address, config.Conf.Core.Port)
 
 	<-ctx.Done()
 	return ctx.Err()

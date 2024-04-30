@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
-	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 // TableNameAccessCheck app configs table
@@ -81,7 +82,7 @@ func getAccessChecker() (*AccessChecker, error) {
 	err := config.DB.Select(&items, "SELECT * FROM "+TableNameAccessCheck()+" WHERE type = 1 AND status = 1 ORDER BY id ASC")
 	if err != nil {
 		if valid {
-			log.LogError.Error(err)
+			logger.Error(err)
 			// PASS
 			return accessChecker, nil
 		}
@@ -91,7 +92,7 @@ func getAccessChecker() (*AccessChecker, error) {
 	for i := range items {
 		_, ipnet, err := net.ParseCIDR(items[i].IPCidr)
 		if err != nil {
-			log.LogError.WithField("id", items[i].ID).Errorf("invalid ip cidr: %s", items[i].IPCidr)
+			logger.WithField("id", items[i].ID).Errorf("invalid ip cidr: %s", items[i].IPCidr)
 			// PASS
 			continue
 		}

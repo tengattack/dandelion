@@ -9,10 +9,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
+
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
-	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 var wsUpgrader = websocket.Upgrader{
@@ -96,7 +96,7 @@ func removeConnPoolInfo(conn *websocket.Conn) {
 func connWrite(c *wsConn, message []byte) {
 	err := c.conn.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
-		log.LogError.WithFields(logrus.Fields{
+		logger.WithFields(logger.Fields{
 			"app_id":      c.appID,
 			"host":        c.host,
 			"instance_id": c.instanceID,
@@ -108,13 +108,13 @@ func connWrite(c *wsConn, message []byte) {
 func notifyConn(m *app.NotifyMessage) {
 	message, err := json.Marshal(m)
 	if err != nil {
-		log.LogError.Errorf("encode message error: %v", err)
+		logger.Errorf("encode message error: %v", err)
 		return
 	}
 	if config.Conf.Kafka.Enabled {
 		err = config.MQ.Publish(string(message))
 		if err != nil {
-			log.LogError.Errorf("publish message error: %v", err)
+			logger.Errorf("publish message error: %v", err)
 			// PASS
 		}
 	}
@@ -131,7 +131,7 @@ func notifyConn(m *app.NotifyMessage) {
 }
 
 func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
-	log.LogAccess.Debugf("websocket received message: %s", msg)
+	logger.Debugf("websocket received message: %s", msg)
 	var message app.WSMessageRaw
 	err := json.Unmarshal(msg, &message)
 	if err != nil {
@@ -154,7 +154,7 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 					" SET config_id = :config_id, commit_id = :commit_id, status = :status, updated_time = :updated_time"+
 					" WHERE app_id = :app_id AND host = :host AND instance_id = :instance_id", &s)
 				if err != nil {
-					log.LogError.Errorf("update instance record failed: %v", err)
+					logger.Errorf("update instance record failed: %v", err)
 					// PASS
 				}
 			}
@@ -183,11 +183,11 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 			_, err = config.DB.NamedExec("INSERT INTO "+TableNameInstances()+" (app_id, host, instance_id, config_id, commit_id, status, created_time, updated_time)"+
 				" VALUES (:app_id, :host, :instance_id, :config_id, :commit_id, :status, :created_time, :updated_time)", &row)
 			if err != nil {
-				log.LogError.Errorf("create new instance record failed: %v", err)
+				logger.Errorf("create new instance record failed: %v", err)
 				return err
 			}
 		} else if err != nil {
-			log.LogError.Errorf("get instance record failed: %v", err)
+			logger.Errorf("get instance record failed: %v", err)
 			return err
 		} else {
 			row.Status = payload.Status
@@ -206,7 +206,7 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 					" WHERE id = :id", &row)
 			}
 			if err != nil {
-				log.LogError.Errorf("update instance record failed: %v", err)
+				logger.Errorf("update instance record failed: %v", err)
 				return err
 			}
 		}
@@ -217,7 +217,7 @@ func handleWebSocketMessage(conn *websocket.Conn, msg []byte) error {
 func wsPushHandler(c *gin.Context) {
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.LogError.Errorf("failed to set websocket upgrade: %+v", err)
+		logger.Errorf("failed to set websocket upgrade: %+v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -230,14 +230,14 @@ func wsPushHandler(c *gin.Context) {
 		t, msg, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				log.LogError.Errorf("unexpected close error: %v", err)
+				logger.Errorf("unexpected close error: %v", err)
 			}
 			break
 		}
 		if t == websocket.TextMessage || t == websocket.BinaryMessage {
 			err = handleWebSocketMessage(conn, msg)
 			if err != nil {
-				log.LogError.Errorf("websocket handle message error: %v", err)
+				logger.Errorf("websocket handle message error: %v", err)
 			}
 		}
 	}

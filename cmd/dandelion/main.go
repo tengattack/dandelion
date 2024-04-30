@@ -13,6 +13,7 @@ import (
 	"github.com/tengattack/dandelion/log"
 	"github.com/tengattack/dandelion/mq"
 	"github.com/tengattack/dandelion/repository"
+	"github.com/tengattack/tgo/logger"
 )
 
 var (
@@ -61,13 +62,13 @@ func main() {
 
 	config.Repo, err = repository.InitRepository(&conf.Repository)
 	if err != nil {
-		log.LogError.Errorf("init repository error: %v", err)
+		logger.Errorf("init repository error: %v", err)
 		panic(err)
 	}
 
 	db, err := InitDatabase(&config.Conf.Database)
 	if err != nil {
-		log.LogError.Errorf("database error: %v", err)
+		logger.Errorf("database error: %v", err)
 		panic(err)
 	}
 	defer db.Close()
@@ -76,7 +77,7 @@ func main() {
 	if config.Conf.Kafka.Enabled {
 		m, err := mq.NewProducer(config.Conf.Kafka.Servers, config.Conf.Kafka.Topic)
 		if err != nil {
-			log.LogError.Errorf("database error: %v", err)
+			logger.Errorf("database error: %v", err)
 			panic(err)
 		}
 		defer m.Close()
@@ -85,7 +86,7 @@ func main() {
 
 	err = RunHTTPServer()
 	if err != nil {
-		log.LogError.Errorf("http server error: %v", err)
+		logger.Errorf("http server error: %v", err)
 		panic(err)
 	}
 }

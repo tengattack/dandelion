@@ -12,10 +12,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/tengattack/dandelion/cmd/dandelion/cloudprovider"
-	"github.com/tengattack/dandelion/cmd/dandelion/config"
-	"github.com/tengattack/dandelion/cmd/dandelion/registry"
-	"github.com/tengattack/dandelion/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -30,6 +26,11 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+
+	"github.com/tengattack/dandelion/cmd/dandelion/cloudprovider"
+	"github.com/tengattack/dandelion/cmd/dandelion/config"
+	"github.com/tengattack/dandelion/cmd/dandelion/registry"
+	"github.com/tengattack/tgo/logger"
 )
 
 // PatchStringValue specifies a patch operation for a string.
@@ -325,7 +326,7 @@ func kubeRollbackHandler(c *gin.Context) {
 	var d *Deployment
 	dpNew, err := deploymentsClient.Get(deployment, metav1.GetOptions{})
 	if err != nil {
-		log.LogError.Errorf("deployment get after rollback error: %v", err)
+		logger.Errorf("deployment get after rollback error: %v", err)
 		// PASS
 	} else {
 		d = getDeployment(dpNew)
@@ -594,7 +595,7 @@ func kubeNewNodeHandler(c *gin.Context) {
 			clientIP := c.ClientIP()
 			err2 := cloudprovider.SetNodeName(clientIP, nodeName)
 			if err2 != nil {
-				log.LogError.Errorf("cloud provider set %q node name %q error: %v", clientIP, nodeName, err2)
+				logger.Errorf("cloud provider set %q node name %q error: %v", clientIP, nodeName, err2)
 				// PASS
 			}
 			succeed(c, map[string]interface{}{
@@ -653,7 +654,7 @@ func endConn(deployment string, conn *websocket.Conn) {
 				// order is not important
 				conns[i] = conns[len(conns)-1]
 				eventsConns[deployment] = conns[:len(conns)-1]
-				log.LogAccess.Debugf("events connections %s remove index %d", deployment, i)
+				logger.Debugf("events connections %s remove index %d", deployment, i)
 				break
 			}
 		}
@@ -674,7 +675,7 @@ func publishEventTo(deployment string, event *DeploymentEvent) {
 	go func() {
 		err := webhookClient.Send(event)
 		if err != nil {
-			log.LogError.Errorf("webhook send deployment %s event error: %v", deployment, err)
+			logger.Errorf("webhook send deployment %s event error: %v", deployment, err)
 		}
 	}()
 }
@@ -703,7 +704,7 @@ func triggerDeploymentEvent(deployment, action string) {
 
 			dp, err := client.Get(deployment, metav1.GetOptions{})
 			if err != nil {
-				log.LogError.Errorf("%s deployment get status error: %v", action, err)
+				logger.Errorf("%s deployment get status error: %v", action, err)
 				break
 			}
 			event := &DeploymentEvent{
@@ -714,10 +715,10 @@ func triggerDeploymentEvent(deployment, action string) {
 			}
 			if isDeploymentComplete(dp, &dp.Status) {
 				event.Event = "complete"
-				log.LogAccess.Infof("%s deployment %s completed", action, deployment)
+				logger.Infof("%s deployment %s completed", action, deployment)
 			} else if timeout {
 				event.Event = "timeout"
-				log.LogAccess.Warnf("%s deployment %s timeout", action, deployment)
+				logger.Warnf("%s deployment %s timeout", action, deployment)
 			}
 			if !event.Equal(lastEvent) {
 				publishEventTo(deployment, event)
@@ -740,7 +741,7 @@ const (
 func kubeEventsHandler(c *gin.Context) {
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.LogError.Errorf("Failed to set websocket upgrade: %+v", err)
+		logger.Errorf("Failed to set websocket upgrade: %+v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -756,7 +757,7 @@ func kubeEventsHandler(c *gin.Context) {
 		t, msg, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				log.LogError.Errorf("Unexpected close error: %v", err)
+				logger.Errorf("Unexpected close error: %v", err)
 			}
 			break
 		}

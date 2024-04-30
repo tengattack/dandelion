@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 func rootHandler(c *gin.Context) {
@@ -35,11 +37,11 @@ func routerEngine() *gin.Engine {
 // RunHTTPServer provide run http or https protocol.
 func RunHTTPServer() (err error) {
 	if !Conf.API.Enabled {
-		log.LogAccess.Debug("httpd server is disabled.")
+		logger.Debug("httpd server is disabled.")
 		return nil
 	}
 
-	log.LogAccess.Debugf("HTTPD server is running on %s:%d.", Conf.API.Address, Conf.API.Port)
+	logger.Debugf("HTTPD server is running on %s:%d.", Conf.API.Address, Conf.API.Port)
 
 	err = http.ListenAndServe(fmt.Sprintf("%s:%d", Conf.API.Address, Conf.API.Port), routerEngine())
 

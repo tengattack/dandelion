@@ -16,10 +16,11 @@ import (
 	"strings"
 
 	shellwords "github.com/mattn/go-shellwords"
+
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion-seed/config"
-	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 // errors
@@ -80,7 +81,7 @@ func ReadMetadataFromFile(appConfig *config.SectionConfig) (*app.ClientConfig, e
 			}
 		}
 	}
-	log.LogAccess.Debugf("[%s] client config: %v", appConfig.AppID, cfg)
+	logger.Debugf("[%s] client config: %v", appConfig.AppID, cfg)
 	return &cfg, nil
 }
 
@@ -103,7 +104,7 @@ func syncExpectedFile(appID string, except io.Reader, fi os.FileInfo, actualFile
 		f.Close()
 		err = os.Chtimes(actualFile, fi.ModTime(), fi.ModTime())
 		if err != nil {
-			log.LogAccess.Warnf("[%s] chtimes %s error: %v", appID, actualFileName, err)
+			logger.Warnf("[%s] chtimes %s error: %v", appID, actualFileName, err)
 		}
 		return nil
 	}
@@ -129,7 +130,7 @@ func syncExpectedFile(appID string, except io.Reader, fi os.FileInfo, actualFile
 	exceptMD5 := hex.EncodeToString(h.Sum(nil))
 
 	if actualMD5 != exceptMD5 {
-		log.LogAccess.Debugf("[%s] file %s md5 mismatch: \"%s\" != \"%s\"", appID, actualFileName, actualMD5, exceptMD5)
+		logger.Debugf("[%s] file %s md5 mismatch: \"%s\" != \"%s\"", appID, actualFileName, actualMD5, exceptMD5)
 
 		f, err := os.Create(actualFile)
 		if err != nil {
@@ -143,7 +144,7 @@ func syncExpectedFile(appID string, except io.Reader, fi os.FileInfo, actualFile
 		f.Close()
 		err = os.Chtimes(actualFile, fi.ModTime(), fi.ModTime())
 		if err != nil {
-			log.LogAccess.Warnf("[%s] chtimes %s error: %v", appID, actualFileName, err)
+			logger.Warnf("[%s] chtimes %s error: %v", appID, actualFileName, err)
 		}
 		return nil
 	}
@@ -153,21 +154,21 @@ func syncExpectedFile(appID string, except io.Reader, fi os.FileInfo, actualFile
 
 // ResyncConfigFiles sync config files
 func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files []string) error {
-	log.LogAccess.Infof("[%s] resyncing config files", c.AppID)
+	logger.Infof("[%s] resyncing config files", c.AppID)
 	var uid, gid int
 	var mode os.FileMode
 	if appConfig.Chown != "" {
 		parts := strings.Split(appConfig.Chown, ":")
 		u, err := user.Lookup(parts[0])
 		if err != nil {
-			log.LogError.Errorf("[%s] failed to lookup user '%s': %v", c.AppID, parts[0], err)
+			logger.Errorf("[%s] failed to lookup user '%s': %v", c.AppID, parts[0], err)
 			return err
 		}
 		uid, _ = strconv.Atoi(u.Uid)
 		if len(parts) > 1 {
 			g, err := user.LookupGroup(parts[1])
 			if err != nil {
-				log.LogError.Errorf("[%s] failed to lookup group '%s': %v", c.AppID, parts[1], err)
+				logger.Errorf("[%s] failed to lookup group '%s': %v", c.AppID, parts[1], err)
 				return err
 			}
 			gid, _ = strconv.Atoi(g.Gid)
@@ -212,14 +213,14 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 		if uid != 0 {
 			err := os.Chown(filePath, uid, gid)
 			if err != nil {
-				log.LogError.Errorf("[%s] failed to change ownership for file '%s': %v", c.AppID, filePath, err)
+				logger.Errorf("[%s] failed to change ownership for file '%s': %v", c.AppID, filePath, err)
 				return err
 			}
 		}
 		if mode != 0 {
 			err := os.Chmod(filePath, mode)
 			if err != nil {
-				log.LogError.Errorf("[%s] failed to change permission for file '%s': %v", c.AppID, filePath, err)
+				logger.Errorf("[%s] failed to change permission for file '%s': %v", c.AppID, filePath, err)
 				return err
 			}
 		}
@@ -227,17 +228,17 @@ func ResyncConfigFiles(appConfig *config.SectionConfig, c *app.AppConfig, files 
 	if appConfig.ExecReload != "" {
 		parts, err := shellwords.Parse(appConfig.ExecReload)
 		if err != nil {
-			log.LogError.Errorf("[%s] parse reload command error: %v", c.AppID, err)
+			logger.Errorf("[%s] parse reload command error: %v", c.AppID, err)
 			return err
 		}
 		out, err := exec.Command(parts[0], parts[1:]...).Output()
 		if len(out) > 0 {
-			log.LogAccess.Infof("[%s] exec reload:\n%s", c.AppID, string(out))
+			logger.Infof("[%s] exec reload:\n%s", c.AppID, string(out))
 		} else {
-			log.LogAccess.Infof("[%s] exec reload", c.AppID)
+			logger.Infof("[%s] exec reload", c.AppID)
 		}
 		if err != nil {
-			log.LogError.Errorf("[%s] exec reload error: %v", c.AppID, err)
+			logger.Errorf("[%s] exec reload error: %v", c.AppID, err)
 			return err
 		}
 	}
@@ -248,12 +249,12 @@ func checkConfig(appConfig *config.SectionConfig, clientConfig *app.ClientConfig
 	Client.SetStatus(clientConfig, client.StatusChecking)
 	c, err := Client.Match(clientConfig)
 	if err != nil {
-		log.LogError.Errorf("[%s] match error: %v", appConfig.AppID, err)
+		logger.Errorf("[%s] match error: %v", appConfig.AppID, err)
 		return nil, err
 	}
 	files, err := Client.ListFiles(c.AppID, c.CommitID)
 	if err != nil {
-		log.LogError.Errorf("[%s] list files error: %v", c.AppID, err)
+		logger.Errorf("[%s] list files error: %v", c.AppID, err)
 		return c, err
 	}
 	dirty := false
@@ -263,7 +264,7 @@ func checkConfig(appConfig *config.SectionConfig, clientConfig *app.ClientConfig
 		s, err := os.Stat(filePath)
 		if os.IsNotExist(err) {
 			dirty = true
-			log.LogAccess.Infof("[%s] config file lost", c.AppID)
+			logger.Infof("[%s] config file lost", c.AppID)
 			break
 		}
 		if err != nil {
@@ -283,7 +284,7 @@ func checkConfig(appConfig *config.SectionConfig, clientConfig *app.ClientConfig
 		md5sum := hex.EncodeToString(h.Sum(nil))
 		if md5sum != c.MD5Sum {
 			dirty = true
-			log.LogAccess.Infof("[%s] config file md5sum mismatch: \"%s\" != \"%s\"", c.AppID, md5sum, c.MD5Sum)
+			logger.Infof("[%s] config file md5sum mismatch: \"%s\" != \"%s\"", c.AppID, md5sum, c.MD5Sum)
 		}
 	}
 	if dirty {
@@ -294,7 +295,7 @@ func checkConfig(appConfig *config.SectionConfig, clientConfig *app.ClientConfig
 		// Sync config
 		err = ResyncConfigFiles(appConfig, c, files)
 		if err != nil {
-			log.LogError.Errorf("[%s] resync config files error: %v", c.AppID, err)
+			logger.Errorf("[%s] resync config files error: %v", c.AppID, err)
 			return c, err
 		}
 	}
@@ -303,10 +304,10 @@ func checkConfig(appConfig *config.SectionConfig, clientConfig *app.ClientConfig
 
 // CheckAppConfig check single app's config
 func CheckAppConfig(appConfig *config.SectionConfig) error {
-	log.LogAccess.Debugf("[%s] checking", appConfig.AppID)
+	logger.Debugf("[%s] checking", appConfig.AppID)
 	clientConfig, err := ReadMetadataFromFile(appConfig)
 	if err != nil {
-		log.LogError.Errorf("[%s] read metadata error: %v", appConfig.AppID, err)
+		logger.Errorf("[%s] read metadata error: %v", appConfig.AppID, err)
 		return err
 	}
 

@@ -21,10 +21,11 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/gobwas/glob"
+
 	"github.com/tengattack/dandelion/app"
 	"github.com/tengattack/dandelion/client"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
-	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 // CommitAuthor is app config commit author structure
@@ -80,7 +81,7 @@ func getBranches(force bool) ([]string, error) {
 	if force || cachedBranches == nil {
 		rbs, err := config.Repo.Branches()
 		if err != nil {
-			log.LogError.Errorf("get refs error: %v", err)
+			logger.Errorf("get refs error: %v", err)
 			return nil, err
 		}
 		defer rbs.Close()
@@ -108,7 +109,7 @@ func getAppIDs() ([]string, error) {
 	// list entries
 	branches, err := getBranches(false)
 	if err != nil {
-		log.LogError.Errorf("get refs error: %v", err)
+		logger.Errorf("get refs error: %v", err)
 		return nil, err
 	}
 
@@ -152,7 +153,7 @@ func notifyAppConfigEvent(m *app.NotifyMessage) {
 	go func() {
 		err := webhookClient.Send(event)
 		if err != nil {
-			log.LogError.Errorf("webhook send app config %s event error: %v", event.Name, err)
+			logger.Errorf("webhook send app config %s event error: %v", event.Name, err)
 		}
 	}()
 }
@@ -174,7 +175,7 @@ func appSyncHandler(c *gin.Context) {
 	if appID != "" {
 		branches, err := getBranches(false)
 		if err != nil {
-			log.LogError.Errorf("get branches error: %v", err)
+			logger.Errorf("get branches error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -182,7 +183,7 @@ func appSyncHandler(c *gin.Context) {
 			if appID == getAppID(branch) {
 				err = config.Repo.Pull(branch)
 				if err != nil && err != git.NoErrAlreadyUpToDate {
-					log.LogError.WithField("branch", branch).Errorf("pull error: %v", err)
+					logger.WithField("branch", branch).Errorf("pull error: %v", err)
 					abortWithError(c, http.StatusInternalServerError, err.Error())
 					return
 				}
@@ -191,13 +192,13 @@ func appSyncHandler(c *gin.Context) {
 	} else {
 		err = config.Repo.SyncBranches()
 		if err != nil {
-			log.LogError.Errorf("sync branches error: %v", err)
+			logger.Errorf("sync branches error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 		_, err = getBranches(true)
 		if err != nil {
-			log.LogError.Errorf("get branches error: %v", err)
+			logger.Errorf("get branches error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -205,7 +206,7 @@ func appSyncHandler(c *gin.Context) {
 
 	h, err := config.Repo.Head()
 	if err != nil {
-		log.LogError.Errorf("head error: %v", err)
+		logger.Errorf("head error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -268,7 +269,7 @@ func appPublishConfigHandler(c *gin.Context) {
 	// ... retrieving the commit object
 	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
-		log.LogError.Errorf("get commit error: %v", err)
+		logger.Errorf("get commit error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -276,7 +277,7 @@ func appPublishConfigHandler(c *gin.Context) {
 	// ... retrieve the tree from the commit
 	tree, err := commit.Tree()
 	if err != nil {
-		log.LogError.Errorf("ls-tree error: %v", err)
+		logger.Errorf("ls-tree error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -297,7 +298,7 @@ func appPublishConfigHandler(c *gin.Context) {
 		return err
 	})
 	if err != nil {
-		log.LogError.Errorf("md5 sum error: %v", err)
+		logger.Errorf("md5 sum error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -320,14 +321,14 @@ func appPublishConfigHandler(c *gin.Context) {
 		" (app_id, status, version, host, instance_id, commit_id, md5sum, author, created_time, updated_time)"+
 		" VALUES (:app_id, :status, :version, :host, :instance_id, :commit_id, :md5sum, :author, :created_time, :updated_time)", &appConfig)
 	if err != nil {
-		log.LogError.Errorf("db insert error: %v", err)
+		logger.Errorf("db insert error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	appConfig.ID, err = r.LastInsertId()
 	if err != nil {
-		log.LogError.Errorf("get last insert id error: %v", err)
+		logger.Errorf("get last insert id error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -364,7 +365,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 		abortWithError(c, http.StatusNotFound, err.Error())
 		return
 	} else if err != nil {
-		log.LogError.Errorf("db select error: %v", err)
+		logger.Errorf("db select error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -377,7 +378,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 	t := time.Now().Unix()
 	_, err = config.DB.Exec("UPDATE "+TableNameConfigs()+" SET status = 0, updated_time = ? WHERE id = ?", t, id)
 	if err != nil {
-		log.LogError.Errorf("db update error: %v", err)
+		logger.Errorf("db update error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -409,7 +410,7 @@ func appMatchConfigHandler(c *gin.Context) {
 	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs()+" WHERE app_id = ? AND status = 1 AND version <= ? ORDER BY created_time DESC",
 		appID, version)
 	if err != nil {
-		log.LogError.Errorf("db select error: %v", err)
+		logger.Errorf("db select error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -418,7 +419,7 @@ func appMatchConfigHandler(c *gin.Context) {
 		glob1, err1 := glob.Compile(appConfig.Host)
 		glob2, err2 := glob.Compile(appConfig.InstanceID)
 		if err1 != nil || err2 != nil {
-			log.LogAccess.Warnf("config %d host or instance_id glob complie failed", appConfig.ID)
+			logger.Warnf("config %d host or instance_id glob complie failed", appConfig.ID)
 			continue
 		}
 		if glob1.Match(host) && glob2.Match(instanceID) {
@@ -460,7 +461,7 @@ func appListConfigsHandler(c *gin.Context) {
 	err := config.DB.Select(&configs, "SELECT * FROM "+TableNameConfigs()+" WHERE app_id = ? AND status = 1 ORDER BY created_time DESC",
 		appID)
 	if err != nil {
-		log.LogError.Errorf("db select error: %v", err)
+		logger.Errorf("db select error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -483,7 +484,7 @@ func appListCommitsHandler(c *gin.Context) {
 
 	wt, err := config.Repo.Worktree()
 	if err != nil {
-		log.LogError.Errorf("worktree error: %v", err)
+		logger.Errorf("worktree error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -500,14 +501,14 @@ func appListCommitsHandler(c *gin.Context) {
 				Force:  true,
 			})
 			if err != nil {
-				log.LogError.Errorf("checkout error: %v", err)
+				logger.Errorf("checkout error: %v", err)
 				abortWithError(c, http.StatusInternalServerError, err.Error())
 				return
 			}
 
 			commits, err := config.Repo.Log(&git.LogOptions{})
 			if err != nil {
-				log.LogError.Errorf("log error: %v", err)
+				logger.Errorf("log error: %v", err)
 				abortWithError(c, http.StatusInternalServerError, err.Error())
 				return
 			}
@@ -541,7 +542,7 @@ func appListFilesHandler(c *gin.Context) {
 		// No need to checkout here
 		wt, err := Repo.Worktree()
 		if err != nil {
-			log.LogError.Errorf("worktree error: %v", err)
+			logger.Errorf("worktree error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -550,7 +551,7 @@ func appListFilesHandler(c *gin.Context) {
 			Force:  true,
 		})
 		if err != nil {
-			log.LogError.Errorf("checkout error: %v", err)
+			logger.Errorf("checkout error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -561,7 +562,7 @@ func appListFilesHandler(c *gin.Context) {
 	// ... retrieving the commit object
 	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
-		log.LogError.Errorf("get commit error: %v", err)
+		logger.Errorf("get commit error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -571,7 +572,7 @@ func appListFilesHandler(c *gin.Context) {
 	// ... retrieve the tree from the commit
 	tree, err := commit.Tree()
 	if err != nil {
-		log.LogError.Errorf("ls-tree error: %v", err)
+		logger.Errorf("ls-tree error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -608,7 +609,7 @@ func appGetFileHandler(c *gin.Context) {
 		// No need to checkout here
 		wt, err := Repo.Worktree()
 		if err != nil {
-			log.LogError.Errorf("worktree error: %v", err)
+			logger.Errorf("worktree error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -617,7 +618,7 @@ func appGetFileHandler(c *gin.Context) {
 			Force:  true,
 		})
 		if err != nil {
-			log.LogError.Errorf("checkout error: %v", err)
+			logger.Errorf("checkout error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -628,7 +629,7 @@ func appGetFileHandler(c *gin.Context) {
 	// ... retrieving the commit object
 	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
-		log.LogError.Errorf("get commit error: %v", err)
+		logger.Errorf("get commit error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -636,7 +637,7 @@ func appGetFileHandler(c *gin.Context) {
 	// ... retrieve the tree from the commit
 	tree, err := commit.Tree()
 	if err != nil {
-		log.LogError.Errorf("ls-tree error: %v", err)
+		logger.Errorf("ls-tree error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -646,14 +647,14 @@ func appGetFileHandler(c *gin.Context) {
 		abortWithError(c, http.StatusNotFound, err.Error())
 		return
 	} else if err != nil {
-		log.LogError.Errorf("get file error: %v", err)
+		logger.Errorf("get file error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	fr, err := f.Reader()
 	if err != nil {
-		log.LogError.Errorf("get file error: %v", err)
+		logger.Errorf("get file error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -661,7 +662,7 @@ func appGetFileHandler(c *gin.Context) {
 
 	d, err := ioutil.ReadAll(fr)
 	if err != nil {
-		log.LogError.Errorf("read file error: %v", err)
+		logger.Errorf("read file error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -673,7 +674,7 @@ func buildArchive(appID, commitID, archiveFilePath string) error {
 	lArchive.Lock()
 	defer lArchive.Unlock()
 
-	log.LogAccess.Infof("building archive for %s/%s", appID, commitID)
+	logger.Infof("building archive for %s/%s", appID, commitID)
 
 	l.Lock()
 	defer l.Unlock()
@@ -683,14 +684,14 @@ func buildArchive(appID, commitID, archiveFilePath string) error {
 	// ... retrieving the commit object
 	commit, err := config.Repo.CommitObject(plumbing.NewHash(commitID))
 	if err != nil {
-		log.LogError.Errorf("get commit error: %v", err)
+		logger.Errorf("get commit error: %v", err)
 		return err
 	}
 
 	// ... retrieve the tree from the commit
 	tree, err := commit.Tree()
 	if err != nil {
-		log.LogError.Errorf("ls-tree error: %v", err)
+		logger.Errorf("ls-tree error: %v", err)
 		return err
 	}
 
@@ -743,7 +744,7 @@ func appGetArchiveHandler(c *gin.Context) {
 	archivePath := path.Join(config.Conf.Core.ArchivePath, appID)
 	err := os.MkdirAll(archivePath, os.ModePerm)
 	if err != nil {
-		log.LogError.Errorf("mkdirp error: %v", err)
+		logger.Errorf("mkdirp error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -758,7 +759,7 @@ func appGetArchiveHandler(c *gin.Context) {
 		// build archive
 		err = buildArchive(appID, commitID, archiveFilePath)
 		if err != nil {
-			log.LogError.Errorf("build archive error: %v", err)
+			logger.Errorf("build archive error: %v", err)
 			abortWithError(c, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -768,7 +769,7 @@ func appGetArchiveHandler(c *gin.Context) {
 	}
 
 	if err != nil {
-		log.LogError.Errorf("get archive error: %v", err)
+		logger.Errorf("get archive error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -776,7 +777,7 @@ func appGetArchiveHandler(c *gin.Context) {
 
 	d, err := ioutil.ReadAll(f)
 	if err != nil {
-		log.LogError.Errorf("read archive file error: %v", err)
+		logger.Errorf("read archive file error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -793,7 +794,7 @@ func appListInstancesHandler(c *gin.Context) {
 	err := config.DB.Select(&statuses, "SELECT * FROM "+TableNameInstances()+" WHERE app_id = ? AND updated_time >= ? ORDER BY updated_time DESC",
 		appID, t)
 	if err != nil {
-		log.LogError.Errorf("db select error: %v", err)
+		logger.Errorf("db select error: %v", err)
 		abortWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}

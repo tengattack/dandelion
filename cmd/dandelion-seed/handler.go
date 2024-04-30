@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/tengattack/dandelion/app"
-	"github.com/tengattack/dandelion/log"
+	"github.com/tengattack/tgo/logger"
 )
 
 const (
@@ -40,7 +41,7 @@ func HandleMessage(m *app.NotifyMessage) {
 			if config.AppID == m.AppID {
 				err := CheckAppConfig(&config)
 				if err != nil {
-					log.LogError.WithField("app_id", m.AppID).Errorf("handle message error: %v", err)
+					logger.WithField("app_id", m.AppID).Errorf("handle message error: %v", err)
 					// PASS
 				}
 			}
