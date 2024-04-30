@@ -42,6 +42,14 @@ type Commit struct {
 	Author   CommitAuthor `json:"author"`
 }
 
+// AppConfigEvent for deployment status
+type AppConfigEvent struct {
+	Name   string         `json:"name"`
+	Action string         `json:"action"`
+	Event  string         `json:"event"`
+	Config *app.AppConfig `json:"config"`
+}
+
 const (
 	// ParamsError the http bad request for error params
 	ParamsError = "Params error"
@@ -61,6 +69,11 @@ func TableNameConfigs() string {
 // TableNameInstances the app instances table
 func TableNameInstances() string {
 	return config.Conf.Database.TablePrefix + "dandelion_app_instances"
+}
+
+func initAppConfig() {
+	l = new(sync.Mutex)
+	lArchive = new(sync.RWMutex)
 }
 
 func getBranches(force bool) ([]string, error) {
@@ -127,6 +140,21 @@ func getAppCommit(branch string, commit *object.Commit) Commit {
 			When:  commit.Author.When,
 		},
 	}
+}
+
+func notifyAppConfigEvent(m *app.NotifyMessage) {
+	event := AppConfigEvent{
+		Name:   m.AppID,
+		Event:  "config",
+		Action: m.Event,
+		Config: m.Config,
+	}
+	go func() {
+		err := webhookClient.Send(event)
+		if err != nil {
+			log.LogError.Errorf("webhook send app config %s event error: %v", event.Name, err)
+		}
+	}()
 }
 
 func appHealthHandler(c *gin.Context) {
@@ -310,6 +338,7 @@ func appPublishConfigHandler(c *gin.Context) {
 		Config: &appConfig,
 	}
 	notifyConn(&m)
+	notifyAppConfigEvent(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,
@@ -360,6 +389,7 @@ func appRollbackConfigHandler(c *gin.Context) {
 		Config: &appConfig,
 	}
 	notifyConn(&m)
+	notifyAppConfigEvent(&m)
 
 	succeed(c, gin.H{
 		"app_id": appID,

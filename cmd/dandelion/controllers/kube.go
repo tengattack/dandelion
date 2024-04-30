@@ -15,7 +15,6 @@ import (
 	"github.com/tengattack/dandelion/cmd/dandelion/cloudprovider"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
 	"github.com/tengattack/dandelion/cmd/dandelion/registry"
-	"github.com/tengattack/dandelion/cmd/dandelion/webhook"
 	"github.com/tengattack/dandelion/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -105,7 +104,6 @@ var (
 	deploymentsClient typedappsv1.DeploymentInterface
 	hpasClient        typedautoscalingv2beta2.HorizontalPodAutoscalerInterface
 	registryClient    *registry.Client
-	webhookClient     *webhook.Client
 	eventsConns       map[string][]*websocket.Conn
 	eventsConnMutex   *sync.Mutex
 	nodeNameCache     *NodeNameCache
@@ -132,7 +130,6 @@ func initKubeClient() error {
 	deploymentsClient = clientset.AppsV1().Deployments(config.Conf.Kubernetes.Namespace)
 	hpasClient = clientset.AutoscalingV2beta2().HorizontalPodAutoscalers(config.Conf.Kubernetes.Namespace)
 	registryClient = registry.NewClient(&config.Conf.Registry)
-	webhookClient = webhook.NewClient(&config.Conf.Webhook)
 	eventsConnMutex = new(sync.Mutex)
 	eventsConns = make(map[string][]*websocket.Conn)
 	nodeNameCache = new(NodeNameCache)

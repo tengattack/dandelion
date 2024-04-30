@@ -6,11 +6,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tengattack/dandelion/cmd/dandelion/config"
+	"github.com/tengattack/dandelion/cmd/dandelion/webhook"
 	"github.com/tengattack/dandelion/log"
+)
+
+var (
+	webhookClient *webhook.Client
 )
 
 var (
@@ -25,8 +29,8 @@ func init() {
 
 // InitHandlers init http server handlers
 func InitHandlers() (*gin.Engine, error) {
-	l = new(sync.Mutex)
-	lArchive = new(sync.RWMutex)
+	webhookClient = webhook.NewClient(&config.Conf.Webhook)
+	initAppConfig()
 	err := initKubeClient()
 	if err != nil {
 		return nil, err
