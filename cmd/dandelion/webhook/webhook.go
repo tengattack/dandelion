@@ -14,12 +14,14 @@ import (
 
 // Client for send events to webhook
 type Client struct {
+	deployEnv  string
 	url        string
 	httpClient *http.Client
 }
 
 // EventMetadata for event
 type EventMetadata struct {
+	DeployEnv  string `json:"deploy_env"`
 	Host       string `json:"host"`
 	InstanceID string `json:"instance_id"`
 }
@@ -38,8 +40,12 @@ func (c *Client) Send(v interface{}) error {
 	}
 
 	e := Event{
-		Metadata: EventMetadata{Host: log.Host(), InstanceID: log.InstanceID()},
-		Event:    v,
+		Metadata: EventMetadata{
+			DeployEnv:  c.deployEnv,
+			Host:       log.Host(),
+			InstanceID: log.InstanceID(),
+		},
+		Event: v,
 	}
 	reqBody, err := json.Marshal(e)
 	if err != nil {
@@ -71,8 +77,9 @@ func (c *Client) Send(v interface{}) error {
 }
 
 // NewClient creates a new webhook client
-func NewClient(conf *config.SectionWebhook) *Client {
+func NewClient(conf *config.SectionWebhook, deployEnv string) *Client {
 	c := new(Client)
+	c.deployEnv = deployEnv
 	c.url = conf.URL
 	c.httpClient = &http.Client{}
 

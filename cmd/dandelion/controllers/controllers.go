@@ -20,16 +20,23 @@ var (
 var (
 	baseURLRegexp *regexp.Regexp
 	envRegexp     *regexp.Regexp
+
+	deployEnv string
 )
 
 func init() {
 	baseURLRegexp = regexp.MustCompile(`(<base href=|\.PUBLIC_URL = )".*"`)
 	envRegexp = regexp.MustCompile(`(\.DEPLOY_ENV = )".*"`)
+
+	deployEnv = os.Getenv("DEPLOY_ENV")
+	if deployEnv == "" {
+		deployEnv = "dev"
+	}
 }
 
 // InitHandlers init http server handlers
 func InitHandlers() (*gin.Engine, error) {
-	webhookClient = webhook.NewClient(&config.Conf.Webhook)
+	webhookClient = webhook.NewClient(&config.Conf.Webhook, deployEnv)
 	initAppConfig()
 	err := initKubeClient()
 	if err != nil {
@@ -75,9 +82,8 @@ func indexHandler(c *gin.Context) {
 		res = baseURLRegexp.ReplaceAll(res, []byte(`$1"`+strings.Repeat("../", n-1)+`"`))
 	}
 
-	env := os.Getenv("DEPLOY_ENV")
-	if env != "" {
-		res = envRegexp.ReplaceAll(res, []byte(`$1`+strconv.Quote(env)))
+	if deployEnv != "" {
+		res = envRegexp.ReplaceAll(res, []byte(`$1`+strconv.Quote(deployEnv)))
 	}
 
 	c.Data(http.StatusOK, contentType, res)
